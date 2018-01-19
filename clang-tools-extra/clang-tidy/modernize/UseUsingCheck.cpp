@@ -80,6 +80,10 @@ void UseUsingCheck::check(const MatchFinder::MatchResult &Result) {
   if (MatchedDecl->getLocation().isInvalid())
     return;
 
+  if (MatchedDecl->getLexicalDeclContext()->isExternCContext()) {
+    return;
+  }
+
   auto &Context = *Result.Context;
   auto &SM = *Result.SourceManager;
 
