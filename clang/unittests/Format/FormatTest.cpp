@@ -11661,6 +11661,7 @@ TEST_F(FormatTest, ParsesConfigurationBools) {
   CHECK_PARSE_NESTED_BOOL(BraceWrapping, AfterExternBlock);
   CHECK_PARSE_NESTED_BOOL(BraceWrapping, BeforeCatch);
   CHECK_PARSE_NESTED_BOOL(BraceWrapping, BeforeElse);
+  CHECK_PARSE_NESTED_BOOL(BraceWrapping, BeforeLambdaBody);
   CHECK_PARSE_NESTED_BOOL(BraceWrapping, IndentBraces);
   CHECK_PARSE_NESTED_BOOL(BraceWrapping, SplitEmptyFunction);
   CHECK_PARSE_NESTED_BOOL(BraceWrapping, SplitEmptyRecord);
@@ -12879,6 +12880,188 @@ TEST_F(FormatTest, FormatsLambdas) {
                "function([]() { return b; }, a)", MergeInline);
   verifyFormat("function(a, []() { return b; })",
                "function(a, []() { return b; })", MergeInline);
+
+  // Check option "BraceWrapping.BeforeLambdaBody" and different state of
+  // AllowShortLambdasOnASingleLine
+  FormatStyle LLVMWithBeforeLambdaBody = getLLVMStyle();
+  LLVMWithBeforeLambdaBody.BreakBeforeBraces = FormatStyle::BS_Custom;
+  LLVMWithBeforeLambdaBody.BraceWrapping.BeforeLambdaBody = true;
+  LLVMWithBeforeLambdaBody.AllowShortLambdasOnASingleLine =
+      FormatStyle::ShortLambdaStyle::SLS_None;
+  verifyFormat("FctWithOneNestedLambdaInline_SLS_None(\n"
+               "    []()\n"
+               "    {\n"
+               "      return 17;\n"
+               "    });",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("FctWithOneNestedLambdaEmpty_SLS_None(\n"
+               "    []()\n"
+               "    {\n"
+               "    });",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("auto fct_SLS_None = []()\n"
+               "{\n"
+               "  return 17;\n"
+               "};",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("TwoNestedLambdas_SLS_None(\n"
+               "    []()\n"
+               "    {\n"
+               "      return Call(\n"
+               "          []()\n"
+               "          {\n"
+               "            return 17;\n"
+               "          });\n"
+               "    });",
+               LLVMWithBeforeLambdaBody);
+
+  LLVMWithBeforeLambdaBody.AllowShortLambdasOnASingleLine =
+      FormatStyle::ShortLambdaStyle::SLS_Empty;
+  verifyFormat("FctWithOneNestedLambdaInline_SLS_Empty(\n"
+               "    []()\n"
+               "    {\n"
+               "      return 17;\n"
+               "    });",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("FctWithOneNestedLambdaEmpty_SLS_Empty([]() {});",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("auto fct_SLS_Empty = []()\n"
+               "{\n"
+               "  return 17;\n"
+               "};",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("TwoNestedLambdas_SLS_Empty(\n"
+               "    []()\n"
+               "    {\n"
+               "      return Call([]() {});\n"
+               "    });",
+               LLVMWithBeforeLambdaBody);
+
+  LLVMWithBeforeLambdaBody.AllowShortLambdasOnASingleLine =
+      FormatStyle::ShortLambdaStyle::SLS_Inline;
+  verifyFormat("FctWithOneNestedLambdaInline_SLS_Inline([]() { return 17; });",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("FctWithOneNestedLambdaEmpty_SLS_Inline([]() {});",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("auto fct_SLS_Inline = []()\n"
+               "{\n"
+               "  return 17;\n"
+               "};",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("TwoNestedLambdas_SLS_Inline([]() { return Call([]() { return 17; }); });",
+               LLVMWithBeforeLambdaBody);
+
+  LLVMWithBeforeLambdaBody.AllowShortLambdasOnASingleLine =
+      FormatStyle::ShortLambdaStyle::SLS_All;
+  verifyFormat("FctWithOneNestedLambdaInline_SLS_All([]() { return 17; });",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("FctWithOneNestedLambdaEmpty_SLS_All([]() {});",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("auto fct_SLS_All = []() { return 17; };", LLVMWithBeforeLambdaBody);
+  verifyFormat("FctWithOneParam_SLS_All(\n"
+               "    []()\n"
+               "    {\n"
+               "      // A cool function...\n"
+               "      return 43;\n"
+               "    });",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat(
+      "FctWithLongLineInLambda_SLS_All(\n"
+      "    []()\n"
+      "    {\n"
+      "      return HereAVeryLongLine(ThatWillBeFormatted, OnMultipleLine,\n"
+      "                               AndShouldNotBeConsiderAsInline,\n"
+      "                               LambdaBodyMustBeBreak);\n"
+      "    });",
+      LLVMWithBeforeLambdaBody);
+  LLVMWithBeforeLambdaBody.BinPackParameters = false;
+  verifyFormat(
+      "FctWithLongLineInLambda_SLS_All(\n"
+      "    []()\n"
+      "    {\n"
+      "      return SomeValueNotSoLong;\n"
+      "    },"
+      "    FirstParam,\n"
+      "    SecondParam,\n"
+      "    ThirdParam,\n"
+      "    FourthParam);",
+      LLVMWithBeforeLambdaBody);
+  verifyFormat(
+      "FctWithLongLineInLambda_SLS_All(\n"
+      "    FirstParam,\n"
+      "    SecondParam,\n"
+      "    ThirdParam,\n"
+      "    FourthParam,\n"
+      "    []()\n"
+      "    {\n"
+      "      return SomeValueNotSoLong;\n"
+      "    });",
+      LLVMWithBeforeLambdaBody);
+  verifyFormat(
+      "FctWithLongLineInLambda_SLS_All(\n"
+      "    []()\n"
+      "    {\n"
+      "      return HereAVeryLongLineThatWillBeFormattedOnMultipleLineAndShouldNotBeConsiderAsInline;\n"
+      "    });",
+      LLVMWithBeforeLambdaBody);
+  verifyFormat(
+      "FctWithLongLineInLambda_SLS_All(\n"
+      "    []()\n"
+      "    {\n"
+      "      return HereAVeryLongLine(ThatWillBeFormatted, OnMultipleLine, "
+      "AndShouldNotBeConsiderAsInline, LambdaBodyMustBeBreak);\n"
+      "    });",
+      "FctWithLongLineInLambda_SLS_All(\n"
+      "    []()\n"
+      "    {\n"
+      "      return HereAVeryLongLine(ThatWillBeFormatted, OnMultipleLine,\n"
+      "                               AndShouldNotBeConsiderAsInline,\n"
+      "                               LambdaBodyMustBeBreak);\n"
+      "    });",
+      LLVMWithBeforeLambdaBody);
+  verifyFormat(
+      "FctWithLongLineInLambda_SLS_All(\n"
+      "    []()\n"
+      "    {\n"
+      "      return HereAVeryLongLine(ThatWillBeFormatted, OnMultipleLine,\n"
+      "                               AndShouldNotBeConsiderAsInline,\n"
+      "                               LambdaBodyMustBeBreak);\n"
+      "    });",
+      LLVMWithBeforeLambdaBody);
+  verifyFormat("FctWithTwoParams_SLS_All(\n"
+               "    []()\n"
+               "    {\n"
+               "      // A cool function...\n"
+               "      return 43;\n"
+               "    },\n"
+               "    87);",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("FctWithTwoParams_SLS_All([]() { return 43; }, 87);",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("FctWithOneNestedLambdas_SLS_All([]() { return 17; });",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("TwoNestedLambdas_SLS_All([]() { return Call([]() { return 17; }); });",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("TwoNestedLambdas_SLS_All([]() { return Call([]() { return 17; }); }, x);",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("TwoNestedLambdas_SLS_All(\n"
+               "    []()\n"
+               "    {\n"
+               "      // A cool function...\n"
+               "      return Call([]() { return 17; });\n"
+               "    });",
+               LLVMWithBeforeLambdaBody);
+  verifyFormat("TwoNestedLambdas_SLS_All(\n"
+               "    []()\n"
+               "    {\n"
+               "      return Call(\n"
+               "          []()\n"
+               "          {\n"
+               "            // A cool function...\n"
+               "            return 17;\n"
+               "          });\n"
+               "    });",
+               LLVMWithBeforeLambdaBody);
 }
 
 TEST_F(FormatTest, EmptyLinesInLambdas) {

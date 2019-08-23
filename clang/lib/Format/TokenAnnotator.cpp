@@ -2917,6 +2917,57 @@ static bool isAllmanBrace(const FormatToken &Tok) {
          !Tok.isOneOf(TT_ObjCBlockLBrace, TT_LambdaLBrace, TT_DictLiteral);
 }
 
+// Returns 'true' if 'Tok' is an function argument.
+static bool IsFunctionArgument(const FormatToken &Tok) {
+  return Tok.MatchingParen && Tok.MatchingParen->Next &&
+         Tok.MatchingParen->Next->isOneOf(tok::comma, tok::r_paren);
+}
+
+static bool
+isItAnEmptyLambdaAllowed(const FormatToken &Tok,
+                         FormatStyle::ShortLambdaStyle ShortLambdaOption) {
+  return Tok.Children.empty() && ShortLambdaOption != FormatStyle::SLS_None;
+}
+
+static bool
+isItAInlineLambdaAllowed(const FormatToken &Tok,
+                         FormatStyle::ShortLambdaStyle ShortLambdaOption) {
+  return IsFunctionArgument(Tok) &&
+         (ShortLambdaOption == FormatStyle::SLS_Inline ||
+          ShortLambdaOption == FormatStyle::SLS_All);
+}
+
+static bool
+isItAOneLineLambdaAllowed(FormatStyle::ShortLambdaStyle ShortLambdaOption) {
+  return ShortLambdaOption == FormatStyle::SLS_All;
+}
+
+static bool isOneChildWithoutMustBreakBefore(const FormatToken &Tok) {
+  if (Tok.Children.size() != 1)
+    return false;
+  FormatToken *curElt = Tok.Children[0]->First;
+  while (curElt) {
+    if (curElt->MustBreakBefore)
+      return false;
+    curElt = curElt->Next;
+  }
+  return true;
+}
+
+static bool isAllmanBraceIncludedBreakableLambda(
+    const FormatToken &Tok, FormatStyle::ShortLambdaStyle ShortLambdaOption) {
+  if (!Tok.is(tok::l_brace) || Tok.BlockKind != BK_Block ||
+      Tok.isOneOf(TT_ObjCBlockLBrace, TT_DictLiteral))
+    return false;
+
+  if (isItAnEmptyLambdaAllowed(Tok, ShortLambdaOption))
+    return false;
+
+  return (!isItAInlineLambdaAllowed(Tok, ShortLambdaOption) &&
+          !isItAOneLineLambdaAllowed(ShortLambdaOption)) ||
+         !isOneChildWithoutMustBreakBefore(Tok);
+}
+
 bool TokenAnnotator::mustBreakBefore(const AnnotatedLine &Line,
                                      const FormatToken &Right) {
   const FormatToken &Left = *Right.Previous;
@@ -3033,6 +3084,14 @@ bool TokenAnnotator::mustBreakBefore(const AnnotatedLine &Line,
   }
   if (Right.is(TT_InlineASMBrace))
     return Right.HasUnescapedNewline;
+
+  auto ShortLambdaOption = Style.AllowShortLambdasOnASingleLine;
+  if (Style.BraceWrapping.BeforeLambdaBody &&
+      (isAllmanBraceIncludedBreakableLambda(Left, ShortLambdaOption) ||
+       isAllmanBraceIncludedBreakableLambda(Right, ShortLambdaOption))) {
+    return true;
+  }
+
   if (isAllmanBrace(Left) || isAllmanBrace(Right))
     return (Line.startsWith(tok::kw_enum) && Style.BraceWrapping.AfterEnum) ||
            (Line.startsWith(tok::kw_typedef, tok::kw_enum) &&
@@ -3043,8 +3102,7 @@ bool TokenAnnotator::mustBreakBefore(const AnnotatedLine &Line,
     return true;
 
   if (Left.is(TT_LambdaLBrace)) {
-    if (Left.MatchingParen && Left.MatchingParen->Next &&
-        Left.MatchingParen->Next->isOneOf(tok::comma, tok::r_paren) &&
+    if (IsFunctionArgument(Left) &&
         Style.AllowShortLambdasOnASingleLine == FormatStyle::SLS_Inline)
       return false;
 
