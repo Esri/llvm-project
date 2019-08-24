@@ -1,0 +1,50 @@
+
+dist: xenial
+language: cpp
+
+addons:
+  apt:
+    sources:
+     - sourceline: 'deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial main'
+       key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
+    packages:
+     - ninja-build
+     # TODO: These should really be the snapshots packages, but they are currently
+     # broken. Remove the '-9' once they get fixed (see issue #642 for more info)
+     - llvm-9-dev
+     - llvm-9-tools
+     - libclang-9-dev
+     - clang-9
+
+before_install:
+ # Install a supported cmake version (>= 3.4.3)
+ - wget -O cmake.sh https://cmake.org/files/v3.10/cmake-3.10.0-Linux-x86_64.sh 
+ - sudo sh cmake.sh --skip-license --exclude-subdir --prefix=/usr/local
+
+ # Extract the version number from the most-recently installed LLVM
+ - VERSION=`ls -t /usr/lib/ | grep '^llvm-' | head -n 1 | sed -E 's/llvm-(.+)/\1/'`
+
+ # Absolute paths to LLVM's root and bin directory
+ - ROOT_PATH=`llvm-config-$VERSION --prefix`
+ - BIN_PATH=`llvm-config-$VERSION --bindir`
+
+ # TODO: Remove this as soon as humanly possible.
+ # Patch Clang CMake config to remove 'clang_shared' target which is
+ # currently broken in the Debian packaging.
+ - sudo sed -i -e 's/clang-refactor clang_shared clangApplyReplacements/clang-refactor clangApplyReplacements/' $ROOT_PATH/lib/cmake/clang/ClangTargets.cmake
+ - sudo sed -i -e '/clang_shared/d' $ROOT_PATH/lib/cmake/clang/ClangTargets.cmake
+ - sudo sed -i -e '/IMPORTED_SONAME_RELWITHDEBINFO.*libclang_shared\.so/,+1 d' $ROOT_PATH/lib/cmake/clang/ClangTargets-relwithdebinfo.cmake
+ - sudo sed -i -e '/clang_shared/d' $ROOT_PATH/lib/cmake/clang/ClangTargets-relwithdebinfo.cmake
+
+script:
+# Build IWYU
+ - mkdir build
+ - cd build
+ - cmake -GNinja -DCMAKE_PREFIX_PATH=$ROOT_PATH -DCMAKE_C_COMPILER=$BIN_PATH/clang -DCMAKE_CXX_COMPILER=$BIN_PATH/clang++ -DCMAKE_INSTALL_PREFIX=./ ../
+ - ninja install
+
+# Test IWYU
+ - cd ..
+ - python run_iwyu_tests.py -- build/bin/include-what-you-use
+ - python fix_includes_test.py
+ - python iwyu_tool_test.py
