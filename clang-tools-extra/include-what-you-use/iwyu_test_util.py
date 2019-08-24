@@ -85,6 +85,9 @@ _IWYU_PATHS = [
     '../../../../../build/bin/Release',
     '../../../../../build/bin/MinSizeRel',
     '../../../../../build/bin/RelWithDebInfo',
+    # Check default in-tree paths
+    '../../build/bin',
+    '../../build/bin/Release',
     ]
 
 

@@ -119,9 +119,13 @@ endif()
 add_definitions(-DIWYU_GIT_REV="${IWYU_GIT_REV}")
 
 # Install programs
-install(TARGETS include-what-you-use RUNTIME DESTINATION bin)
-install(PROGRAMS fix_includes.py iwyu_tool.py DESTINATION bin)
+install(TARGETS include-what-you-use RUNTIME DESTINATION bin COMPONENT include-what-you-use)
+install(PROGRAMS fix_includes.py iwyu_tool.py DESTINATION bin COMPONENT include-what-you-use)
 
 # Install mapping files
 file(GLOB MAPPING_FILES *.imp)
-install(FILES ${MAPPING_FILES} DESTINATION share/include-what-you-use)
+install(FILES ${MAPPING_FILES} DESTINATION share/include-what-you-use COMPONENT include-what-you-use)
+
+if (IWYU_IN_TREE)
+  add_llvm_install_targets(install-include-what-you-use DEPENDS include-what-you-use COMPONENT include-what-you-use)
+endif()
