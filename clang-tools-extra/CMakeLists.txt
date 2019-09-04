@@ -14,6 +14,7 @@ add_subdirectory(clang-query)
 add_subdirectory(constexpr-everything)
 add_subdirectory(include-what-you-use)
 add_subdirectory(pp-trace)
+add_subdirectory(templight)
 add_subdirectory(tool-template)
 
 # Add the common testsuite after all the tools.

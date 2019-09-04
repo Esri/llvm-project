@@ -68,7 +68,7 @@ set_property(DIRECTORY APPEND
   PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${templight_cl})
 
 install(TARGETS templight
-  RUNTIME DESTINATION bin)
+  RUNTIME DESTINATION bin COMPONENT templight)
 
 # Create the templight-cl symlinks at installation time.
 install(SCRIPT templight_symlink.cmake -DCMAKE_INSTALL_PREFIX=\"${CMAKE_INSTALL_PREFIX}\")
@@ -121,3 +121,5 @@ if(CLANG_INCLUDE_TESTS)
 add_subdirectory(test)
 add_subdirectory(unittests)
 endif()
+
+add_llvm_install_targets(install-templight DEPENDS templight COMPONENT templight)
