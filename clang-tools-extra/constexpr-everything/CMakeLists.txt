@@ -37,9 +37,12 @@ set(LIBRARY_LIST
         clangTooling
         clangToolingCore
         )
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+if (NOT CONSTEXPR_EVERYTHING_IN_TREE)
+  find_package(LLVM REQUIRED CONFIG)
+  message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+  message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+endif()
 
 include_directories(${LLVM_INCLUDE_DIRS})
 if(LLVM_BUILD_MAIN_SRC_DIR)
@@ -67,3 +70,6 @@ target_link_libraries(${PROJECT_NAME}
   LLVMCore # Support
   LLVMSupport
 )
+
+install(TARGETS constexpr-everything RUNTIME DESTINATION bin COMPONENT constexpr-everything)
+add_llvm_install_targets(install-constexpr-everything DEPENDS constexpr-everything COMPONENT constexpr-everything)

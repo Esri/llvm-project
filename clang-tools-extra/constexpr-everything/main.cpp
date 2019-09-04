@@ -229,7 +229,7 @@ public:
 
     // Mark function as constexpr, the next ast visitor will use this
     // information to find constexpr vardecls
-    func->setConstexpr(true);
+    func->setConstexprKind(CSK_constexpr);
 
     // Create diagnostic
     const auto FixIt = clang::FixItHint::CreateInsertion(loc, "constexpr ");
