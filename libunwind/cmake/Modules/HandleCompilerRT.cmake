@@ -62,3 +62,32 @@ function(find_compiler_rt_dir dest)
     message(STATUS "Failed to find compiler-rt directory")
   endif()
 endfunction()
+
+# Mangle the name of a compiler flag into a valid CMake identifier.
+# Ex: --std=c++11 -> STD_EQ_CXX11
+macro(mangle_name str output)
+  string(STRIP "${str}" strippedStr)
+  string(REGEX REPLACE "^/" "" strippedStr "${strippedStr}")
+  string(REGEX REPLACE "^-+" "" strippedStr "${strippedStr}")
+  string(REGEX REPLACE "-+$" "" strippedStr "${strippedStr}")
+  string(REPLACE "-" "_" strippedStr "${strippedStr}")
+  string(REPLACE "=" "_EQ_" strippedStr "${strippedStr}")
+  string(REPLACE "+" "X" strippedStr "${strippedStr}")
+  string(TOUPPER "${strippedStr}" ${output})
+endmacro()
+
+# If the specified 'condition' is true then append the specified list of flags to DEST
+macro(append_flags_if condition DEST)
+  if (${condition})
+    list(APPEND ${DEST} ${ARGN})
+  endif()
+endmacro()
+
+# Add each flag in the list specified by DEST if that flag is supported by the current compiler.
+macro(append_flags_if_supported DEST)
+  foreach(flag ${ARGN})
+    mangle_name("${flag}" flagname)
+    check_cxx_compiler_flag("${flag}" "LIBUNWIND_SUPPORTS_${flagname}_FLAG")
+    append_flags_if(LIBUNWIND_SUPPORTS_${flagname}_FLAG ${DEST} ${flag})
+  endforeach()
+endmacro()

@@ -183,3 +183,20 @@ class E : public C<E> {
   void f() override { super::f(); }
 };
 }
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct _RT_Struct;
+typedef struct _RT_Struct *RT_ExtCHandle; // OK: should not be altered
+
+typedef enum RT_EnumValue {
+  RT_EnumZero = 0,
+  RT_EnumOne = 1,
+  RT_EnumTwo = 2
+} RT_EnumExternalValues;
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
