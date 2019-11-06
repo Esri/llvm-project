@@ -16,6 +16,7 @@ add_subdirectory(include-what-you-use)
 add_subdirectory(pp-trace)
 add_subdirectory(templight)
 add_subdirectory(tool-template)
+add_subdirectory(xunused)
 
 # Add the common testsuite after all the tools.
 if(CLANG_INCLUDE_TESTS)
