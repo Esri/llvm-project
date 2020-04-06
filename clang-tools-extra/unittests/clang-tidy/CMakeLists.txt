@@ -18,6 +18,7 @@ add_extra_unittest(ClangTidyTests
   UsingInserterTest.cpp
   ReadabilityModuleTest.cpp
   TransformerClangTidyCheckTest.cpp
+  PerformanceModuleTest.cpp
   )
 
 target_link_libraries(ClangTidyTests
@@ -34,6 +35,7 @@ target_link_libraries(ClangTidyTests
   clangTidyLLVMModule
   clangTidyObjCModule
   clangTidyReadabilityModule
+  clangTidyPerformanceModule
   clangTidyUtils
   clangTooling
   clangToolingCore
