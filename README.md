@@ -8,6 +8,10 @@ compilers, optimizers, and runtime environments.
 RTC uses a few llvm tools that require custom fixes and custom checks that are not officially part of the llvm project.
 This means that the tools need to be hand-built. Below are the minimum instructions needed to build these tools locally.
 
+> NOTE: Upgrading clang-tidy will require checking all enabled checks against the new version as the names of checks can
+change and will silently not run. This can easily be accomplished by dumping the configuration with the new version of
+clang-tidy and checking it against the older configuration.
+
 ### Clone the runtimecore branch of the llvm-project to get access to the esri additional fixes and checks
 
 Clone the custom branch of llvm and create a build directory where we'll create the build and store all intermediate and
