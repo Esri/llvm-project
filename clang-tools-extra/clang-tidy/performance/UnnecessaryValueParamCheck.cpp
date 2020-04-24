@@ -84,6 +84,14 @@ void UnnecessaryValueParamCheck::registerMatchers(MatchFinder *Finder) {
                        hasDeclaration(namedDecl(
                            matchers::matchesAnyListedName(AllowedTypes))))))),
       decl().bind("param"));
+
+  // This matcher matches any calls made to std::move() with the Expensive to
+  // copy type, filtered out from the check above, being passed to it. 
+  const auto callMoveWithExpArg = callExpr(callee(functionDecl(hasName("std::move"))),
+                                  argumentCountIs(1),
+                                  hasArgument(0, declRefExpr(to(varDecl(hasType(ExpensiveValueParamDecl))))),                                        
+                                  callExpr().bind("callMoveWithExpArg"));
+
   Finder->addMatcher(
       functionDecl(hasBody(stmt()), isDefinition(), unless(isImplicit()),
                    unless(cxxMethodDecl(anyOf(isOverride(), isFinal()))),
@@ -95,11 +103,19 @@ void UnnecessaryValueParamCheck::registerMatchers(MatchFinder *Finder) {
 void UnnecessaryValueParamCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *Param = Result.Nodes.getNodeAs<ParmVarDecl>("param");
   const auto *Function = Result.Nodes.getNodeAs<FunctionDecl>("functionDecl");
+  const auto *CallMove = Result.Nodes.getNodeAs<CallExpr>("callMoveWithExpArg");
 
   FunctionParmMutationAnalyzer &Analyzer =
       MutationAnalyzers.try_emplace(Function, *Function, *Result.Context)
           .first->second;
   if (Analyzer.isMutated(Param))
+    return;
+
+  // If the matcher to filter move() calls with *Param passed to it
+  // succeeds, then this value should not be null. If it is not null
+  // then exit, otherwise the value will be converted to a const ref
+  // which will make move a no-op.
+  if(CallMove)
     return;
 
   const bool IsConstQualified =
