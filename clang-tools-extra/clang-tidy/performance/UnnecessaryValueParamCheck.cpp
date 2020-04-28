@@ -62,6 +62,17 @@ bool isExplicitTemplateSpecialization(const FunctionDecl &Function) {
   return false;
 }
 
+bool isCallToStdMove(const ParmVarDecl &Param. const FunctionDecl &Function, ASTContext &Context)
+{
+  auto paramName = Param.getNameAsString();
+  auto Matches = match(callExpr(callee(functionDecl(hasName("std::move")))), 
+                        argumentCountIs(1),
+                        hasArgument(0, DeclRefExpr(to(varDecl(hasName(paramName))))),
+                 Function, Context);
+
+  return !Matches.empty();
+}
+
 } // namespace
 
 UnnecessaryValueParamCheck::UnnecessaryValueParamCheck(
@@ -85,13 +96,6 @@ void UnnecessaryValueParamCheck::registerMatchers(MatchFinder *Finder) {
                            matchers::matchesAnyListedName(AllowedTypes))))))),
       decl().bind("param"));
 
-  // This matcher matches any calls made to std::move() with the Expensive to
-  // copy type, filtered out from the check above, being passed to it. 
-  const auto callMoveWithExpArg = callExpr(callee(functionDecl(hasName("std::move"))),
-                                  argumentCountIs(1),
-                                  hasArgument(0, declRefExpr(to(varDecl(hasType(ExpensiveValueParamDecl))))),                                        
-                                  callExpr().bind("callMoveWithExpArg"));
-
   Finder->addMatcher(
       functionDecl(hasBody(stmt()), isDefinition(), unless(isImplicit()),
                    unless(cxxMethodDecl(anyOf(isOverride(), isFinal()))),
@@ -103,7 +107,6 @@ void UnnecessaryValueParamCheck::registerMatchers(MatchFinder *Finder) {
 void UnnecessaryValueParamCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *Param = Result.Nodes.getNodeAs<ParmVarDecl>("param");
   const auto *Function = Result.Nodes.getNodeAs<FunctionDecl>("functionDecl");
-  const auto *CallMove = Result.Nodes.getNodeAs<CallExpr>("callMoveWithExpArg");
 
   FunctionParmMutationAnalyzer &Analyzer =
       MutationAnalyzers.try_emplace(Function, *Function, *Result.Context)
@@ -111,11 +114,7 @@ void UnnecessaryValueParamCheck::check(const MatchFinder::MatchResult &Result) {
   if (Analyzer.isMutated(Param))
     return;
 
-  // If the matcher to filter move() calls with *Param passed to it
-  // succeeds, then this value should not be null. If it is not null
-  // then exit, otherwise the value will be converted to a const ref
-  // which will make move a no-op.
-  if(CallMove)
+  if(isCallToStdMove(*Param, *Function, *Result.Context))
     return;
 
   const bool IsConstQualified =
