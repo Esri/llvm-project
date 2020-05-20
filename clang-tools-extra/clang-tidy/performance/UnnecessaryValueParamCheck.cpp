@@ -61,27 +61,26 @@ bool isExplicitTemplateSpecialization(const FunctionDecl &Function) {
   return false;
 }
 
-
-bool isPassedToStdMove(const ParmVarDecl &Param, ASTContext &Context)
-{
+bool isPassedToStdMove(const ParmVarDecl &Param, ASTContext &Context) {
   const auto paramName = Param.getName();
   // Check if the parameter has a name, in case of functions like -
   // void func(const ExpensiveToCopyType)
   // {
-  //  
+  //
   // }
   // The function having an empty body will still have a FunctionDecl and its
   // parmVarDecl picked up by this checker. It will be an empty string and will
   // lead to an assertion failure when using hasName(std::string) being used
-  // in the matcher below. If empty then exit indicating no move calls present for
-  // the function argument being examined. 
-  if(paramName.empty()) {
-    return false; 
+  // in the matcher below. If empty then exit indicating no move calls present
+  // for the function argument being examined.
+  if (paramName.empty()) {
+    return false;
   }
-  auto Matches = match(callExpr(callee(functionDecl(hasName("::std::move"))), 
-                        argumentCountIs(1),
-                        hasArgument(0, declRefExpr(to(parmVarDecl(hasName(paramName)))))),
-                 Context);
+  auto Matches = match(
+      callExpr(
+          callee(functionDecl(hasName("::std::move"))), argumentCountIs(1),
+          hasArgument(0, declRefExpr(to(parmVarDecl(hasName(paramName)))))),
+      Context);
 
   return !Matches.empty();
 }
@@ -100,7 +99,7 @@ void UnnecessaryValueParamCheck::registerMatchers(MatchFinder *Finder) {
   // This check is specific to C++ and doesn't apply to languages like
   // Objective-C.
   if (!getLangOpts().CPlusPlus)
-    return;  
+    return;
   const auto ExpensiveValueParamDecl = parmVarDecl(
       hasType(qualType(
           hasCanonicalType(matchers::isExpensiveToCopy()),
@@ -109,7 +108,7 @@ void UnnecessaryValueParamCheck::registerMatchers(MatchFinder *Finder) {
                            matchers::matchesAnyListedName(AllowedTypes))))))),
       decl().bind("param"));
 
-    Finder->addMatcher(
+  Finder->addMatcher(
       functionDecl(hasBody(stmt()), isDefinition(), unless(isImplicit()),
                    unless(cxxMethodDecl(anyOf(isOverride(), isFinal()))),
                    has(typeLoc(forEach(ExpensiveValueParamDecl))),
@@ -120,9 +119,6 @@ void UnnecessaryValueParamCheck::registerMatchers(MatchFinder *Finder) {
 void UnnecessaryValueParamCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *Param = Result.Nodes.getNodeAs<ParmVarDecl>("param");
   const auto *Function = Result.Nodes.getNodeAs<FunctionDecl>("functionDecl");
-  
-  if(isPassedToStdMove(*Param, *Result.Context))
-   return;
 
   FunctionParmMutationAnalyzer &Analyzer =
       MutationAnalyzers.try_emplace(Function, *Function, *Result.Context)
@@ -130,7 +126,9 @@ void UnnecessaryValueParamCheck::check(const MatchFinder::MatchResult &Result) {
   if (Analyzer.isMutated(Param))
     return;
 
-  
+  if (isPassedToStdMove(*Param, *Result.Context))
+    return;
+
   const bool IsConstQualified =
       Param->getType().getCanonicalType().isConstQualified();
 

@@ -1,32 +1,31 @@
 // RUN: %check_clang_tidy %s performance-unnecessary-value-param %t
 
-// CHECK-FIXES: 
-namespace std{
-  template <typename>
-  struct remove_reference;
+// CHECK-FIXES: #include <utility>
+namespace std {
+template <typename>
+struct remove_reference;
 
-  template <typename _Tp>
-  struct remove_reference {
-    typedef _Tp type;
-  };
+template <typename _Tp>
+struct remove_reference {
+  typedef _Tp type;
+};
 
-  template <typename _Tp>
-  struct remove_reference<_Tp &> {
-    typedef _Tp type;
-  };
+template <typename _Tp>
+struct remove_reference<_Tp &> {
+  typedef _Tp type;
+};
 
-  template <typename _Tp>
-  struct remove_reference<_Tp &&> {
-    typedef _Tp type;
-  };
+template <typename _Tp>
+struct remove_reference<_Tp &&> {
+  typedef _Tp type;
+};
 
-  template <typename _Tp>
-  constexpr typename std::remove_reference<_Tp>::type &&move(_Tp &&__t) noexcept {
-    return static_cast<typename remove_reference<_Tp>::type &&>(__t);
-  }
+template <typename _Tp>
+constexpr typename std::remove_reference<_Tp>::type &&move(_Tp &&__t) {
+  return static_cast<typename std::remove_reference<_Tp>::type &&>(__t);
+}
 
 } // namespace std
-
 
 struct ExpensiveToCopyType {
   const ExpensiveToCopyType & constReference() const {
@@ -40,19 +39,6 @@ void mutate(ExpensiveToCopyType &);
 void mutate(ExpensiveToCopyType *);
 void useAsConstReference(const ExpensiveToCopyType &);
 void useByValue(ExpensiveToCopyType);
-
-template<typename Arg>
-struct UsesExpensivetoCopyType
-{
-    Arg arg;
-    ExpensiveToCopyType expensiveType;
-
-    UsesExpensivetoCopyType() = default;
-    UsesExpensivetoCopyType(ExpensiveToCopyType eType) : expensiveType{std::move(eType)}{}
-    UsesExpensivetoCopyType(ExpensiveToCopyType eType, Arg t) : 
-                            expensiveType{std::move(eType)}, arg{std::move(t)}{}
-};
-
 
 template <class T> class Vector {
  public:
@@ -94,6 +80,15 @@ struct ExpensiveMovableType {
   ~ExpensiveMovableType();
 };
 
+template <typename Arg>
+struct UsesExpensivetoCopyType {
+  Arg arg;
+  ExpensiveToCopyType expensiveType;
+
+  UsesExpensivetoCopyType() = default;
+  UsesExpensivetoCopyType(ExpensiveToCopyType eType) : expensiveType{std::move(eType)} {}
+  UsesExpensivetoCopyType(ExpensiveToCopyType eType, Arg t) : expensiveType{std::move(eType)}, arg{std::move(t)} {}
+};
 
 void positiveExpensiveConstValue(const ExpensiveToCopyType Obj);
 // CHECK-FIXES: void positiveExpensiveConstValue(const ExpensiveToCopyType& Obj);
@@ -107,12 +102,11 @@ void positiveExpensiveValue(ExpensiveToCopyType Obj);
 void positiveExpensiveValue(ExpensiveToCopyType Obj) {
   // CHECK-MESSAGES: [[@LINE-1]]:49: warning: the parameter 'Obj' is copied for each invocation but only used as a const reference; consider making it a const reference [performance-unnecessary-value-param]
   // CHECK-FIXES: void positiveExpensiveValue(const ExpensiveToCopyType& Obj) {
- Obj.constReference();
- useAsConstReference(Obj);
- auto Copy = Obj;
- useByValue(Obj);
+  Obj.constReference();
+  useAsConstReference(Obj);
+  auto Copy = Obj;
+  useByValue(Obj);
 }
-
 
 void positiveVector(Vector<ExpensiveToCopyType> V) {
   // CHECK-MESSAGES: [[@LINE-1]]:49: warning: the parameter 'V' is copied for each invocation but only used as a const reference; consider making it a const reference [performance-unnecessary-value-param]
@@ -121,7 +115,6 @@ void positiveVector(Vector<ExpensiveToCopyType> V) {
     useByValue(Obj);
   }
 }
-
 
 void positiveWithComment(const ExpensiveToCopyType /* important */ S);
 // CHECK-FIXES: void positiveWithComment(const ExpensiveToCopyType& /* important */ S);
@@ -205,26 +198,22 @@ void negativeValueIsReassigned(ExpensiveToCopyType Obj) {
 }
 
 void negativeValueNonConstMethodIsCalled(ExpensiveToCopyType Obj) {
-    Obj.nonConstMethod();
+  Obj.nonConstMethod();
 }
 
-void NegativeExpensiveValueMoved(ExpensiveToCopyType ObjToMove)
-{
-  auto MovedObj = std::move(ObjToMove);
-}
-
-template<typename T>
-static T* NeagtiveCreateGeneric(ExpensiveToCopyType t)
-{
-  return new T(std::move(t));
+void NegativeNoConstRefSinceMoved(ExpensiveToCopyType arg) {
+  auto F = std::move(arg);
 }
 
 template<typename T>
-UsesExpensivetoCopyType<T> NegativeCreate(ExpensiveToCopyType eType)
-{
+T* NegativeNoConstRefSinceTypeMoved(ExpensiveToCopyType t) {
+  return new T(std::move(t)); 
+}
+
+template <typename T>
+UsesExpensivetoCopyType<T> NegativeCreate(ExpensiveToCopyType eType) {
   return UsesExpensivetoCopyType<T>(std::move(eType));
 }
-
 
 struct PositiveValueUnusedConstructor {
   PositiveValueUnusedConstructor(ExpensiveToCopyType Copy) {}
@@ -346,18 +335,6 @@ void PositiveNoMoveInsideLoop(ExpensiveMovableType E) {
   // CHECK-FIXES: void PositiveNoMoveInsideLoop(const ExpensiveMovableType& E) {
   for (;;) {
     auto F = E;
-  }
-}
-
-void NegativeMoveInsideLoop(ExpensiveToCopyType E) {
-  for(;;) {
-    auto F = std::move(E);
-  }
-}
-
-void NegativeMoveInsideRangeBasedLoop(const Vector<ExpensiveToCopyType>& V) {
-  for(auto v : V) {
-    auto f = std::move(v);
   }
 }
 
