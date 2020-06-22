@@ -1,6 +1,11 @@
 // RUN: %check_clang_tidy %s performance-unnecessary-value-param %t
 
 // CHECK-FIXES: #include <utility>
+
+// Mocking std::move() and std::remove_reference<T> (since move() relies on that)
+// Since the regression tests run with -nostdinc++, standard library utilities have
+// to be mocked. Over here the mocking is required for tests that have function arguments
+// being moved.
 namespace std {
 template <typename>
 struct remove_reference;
@@ -81,13 +86,13 @@ struct ExpensiveMovableType {
 };
 
 template <typename Arg>
-struct UsesExpensivetoCopyType {
+struct UsesExpensiveToCopyType {
   Arg arg;
   ExpensiveToCopyType expensiveType;
 
-  UsesExpensivetoCopyType() = default;
-  UsesExpensivetoCopyType(ExpensiveToCopyType eType) : expensiveType{std::move(eType)} {}
-  UsesExpensivetoCopyType(ExpensiveToCopyType eType, Arg t) : expensiveType{std::move(eType)}, arg{std::move(t)} {}
+  UsesExpensiveToCopyType() = default;
+  UsesExpensiveToCopyType(ExpensiveToCopyType eType) : expensiveType{std::move(eType)} {}
+  UsesExpensiveToCopyType(ExpensiveToCopyType eType, Arg t) : expensiveType{std::move(eType)}, arg{std::move(t)} {}
 };
 
 void positiveExpensiveConstValue(const ExpensiveToCopyType Obj);
@@ -201,18 +206,18 @@ void negativeValueNonConstMethodIsCalled(ExpensiveToCopyType Obj) {
   Obj.nonConstMethod();
 }
 
-void NegativeNoConstRefSinceMoved(ExpensiveToCopyType arg) {
+void negativeNoConstRefSinceMoved(ExpensiveToCopyType arg) {
   auto F = std::move(arg);
 }
 
 template<typename T>
-T* NegativeNoConstRefSinceTypeMoved(ExpensiveToCopyType t) {
+T* negativeNoConstRefSinceTypeMoved(ExpensiveToCopyType t) {
   return new T(std::move(t)); 
 }
 
 template <typename T>
-UsesExpensivetoCopyType<T> NegativeCreate(ExpensiveToCopyType eType) {
-  return UsesExpensivetoCopyType<T>(std::move(eType));
+UsesExpensiveToCopyType<T> negativeCreate(ExpensiveToCopyType eType) {
+  return UsesExpensiveToCopyType<T>(std::move(eType));
 }
 
 struct PositiveValueUnusedConstructor {

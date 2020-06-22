@@ -62,7 +62,6 @@ bool isExplicitTemplateSpecialization(const FunctionDecl &Function) {
 }
 
 bool isPassedToStdMove(const ParmVarDecl &Param, ASTContext &Context) {
-  const auto paramName = Param.getName();
   // Check if the parameter has a name, in case of functions like -
   // void func(const ExpensiveToCopyType)
   // {
@@ -73,6 +72,8 @@ bool isPassedToStdMove(const ParmVarDecl &Param, ASTContext &Context) {
   // lead to an assertion failure when using hasName(std::string) being used
   // in the matcher below. If empty then exit indicating no move calls present
   // for the function argument being examined.
+  const auto paramName = Param.getName();
+  
   if (paramName.empty()) {
     return false;
   }
