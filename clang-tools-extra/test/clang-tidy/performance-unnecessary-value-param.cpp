@@ -2,6 +2,36 @@
 
 // CHECK-FIXES: #include <utility>
 
+// Mocking std::move() and std::remove_reference<T> (since move() relies on that)
+// Since the regression tests run with -nostdinc++, standard library utilities have
+// to be mocked. Over here the mocking is required for tests that have function arguments
+// being moved.
+namespace std {
+template <typename>
+struct remove_reference;
+
+template <typename _Tp>
+struct remove_reference {
+  typedef _Tp type;
+};
+
+template <typename _Tp>
+struct remove_reference<_Tp &> {
+  typedef _Tp type;
+};
+
+template <typename _Tp>
+struct remove_reference<_Tp &&> {
+  typedef _Tp type;
+};
+
+template <typename _Tp>
+constexpr typename std::remove_reference<_Tp>::type &&move(_Tp &&__t) {
+  return static_cast<typename std::remove_reference<_Tp>::type &&>(__t);
+}
+
+} // namespace std
+
 struct ExpensiveToCopyType {
   const ExpensiveToCopyType & constReference() const {
     return *this;
@@ -53,6 +83,16 @@ struct ExpensiveMovableType {
   ExpensiveMovableType &operator=(const ExpensiveMovableType &) = default;
   ExpensiveMovableType &operator=(ExpensiveMovableType &&);
   ~ExpensiveMovableType();
+};
+
+template <typename Arg>
+struct UsesExpensiveToCopyType {
+  Arg arg;
+  ExpensiveToCopyType expensiveType;
+
+  UsesExpensiveToCopyType() = default;
+  UsesExpensiveToCopyType(ExpensiveToCopyType eType) : expensiveType{std::move(eType)} {}
+  UsesExpensiveToCopyType(ExpensiveToCopyType eType, Arg t) : expensiveType{std::move(eType)}, arg{std::move(t)} {}
 };
 
 void positiveExpensiveConstValue(const ExpensiveToCopyType Obj);
@@ -164,6 +204,20 @@ void negativeValueIsReassigned(ExpensiveToCopyType Obj) {
 
 void negativeValueNonConstMethodIsCalled(ExpensiveToCopyType Obj) {
   Obj.nonConstMethod();
+}
+
+void negativeNoConstRefSinceMoved(ExpensiveToCopyType arg) {
+  auto F = std::move(arg);
+}
+
+template<typename T>
+T* negativeNoConstRefSinceTypeMoved(ExpensiveToCopyType t) {
+  return new T(std::move(t)); 
+}
+
+template <typename T>
+UsesExpensiveToCopyType<T> negativeCreate(ExpensiveToCopyType eType) {
+  return UsesExpensiveToCopyType<T>(std::move(eType));
 }
 
 struct PositiveValueUnusedConstructor {

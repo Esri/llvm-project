@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "UnnecessaryValueParamCheck.h"
-
 #include "../utils/DeclRefExprUtils.h"
 #include "../utils/FixItHintUtils.h"
 #include "../utils/Matchers.h"
@@ -62,6 +61,31 @@ bool isExplicitTemplateSpecialization(const FunctionDecl &Function) {
   return false;
 }
 
+bool isPassedToStdMove(const ParmVarDecl &Param, ASTContext &Context) {
+  // Check if the parameter has a name, in case of functions like -
+  // void func(const ExpensiveToCopyType)
+  // {
+  //
+  // }
+  // The function having an empty body will still have a FunctionDecl and its
+  // parmVarDecl picked up by this checker. It will be an empty string and will
+  // lead to an assertion failure when using hasName(std::string) being used
+  // in the matcher below. If empty then exit indicating no move calls present
+  // for the function argument being examined.
+  const auto paramName = Param.getName();
+  
+  if (paramName.empty()) {
+    return false;
+  }
+  auto Matches = match(
+      callExpr(
+          callee(functionDecl(hasName("::std::move"))), argumentCountIs(1),
+          hasArgument(0, declRefExpr(to(parmVarDecl(hasName(paramName)))))),
+      Context);
+
+  return !Matches.empty();
+}
+
 } // namespace
 
 UnnecessaryValueParamCheck::UnnecessaryValueParamCheck(
@@ -84,6 +108,7 @@ void UnnecessaryValueParamCheck::registerMatchers(MatchFinder *Finder) {
                        hasDeclaration(namedDecl(
                            matchers::matchesAnyListedName(AllowedTypes))))))),
       decl().bind("param"));
+
   Finder->addMatcher(
       functionDecl(hasBody(stmt()), isDefinition(), unless(isImplicit()),
                    unless(cxxMethodDecl(anyOf(isOverride(), isFinal()))),
@@ -100,6 +125,9 @@ void UnnecessaryValueParamCheck::check(const MatchFinder::MatchResult &Result) {
       MutationAnalyzers.try_emplace(Function, *Function, *Result.Context)
           .first->second;
   if (Analyzer.isMutated(Param))
+    return;
+
+  if (isPassedToStdMove(*Param, *Result.Context))
     return;
 
   const bool IsConstQualified =
