@@ -191,3 +191,26 @@ class StaticConstExpr {
     return 2;
   }
 };
+
+constexpr int foo = 42; // OK: constexpr variable defined in header.
+
+template<typename T>
+struct EB {
+  static constexpr bool value = true;
+};
+
+template<typename T>
+constexpr bool is_good = EB<T>::value; // OK: constexpr variable defined in template.
+
+template<typename Fn>
+int DoubleValue(int n, Fn&& fn)
+{
+  return fn(n);
+}
+
+template<int N>
+int callDoubleValue()
+{
+  // OK: lambda is an implicitly inline operator() with definition, allowed in headers.
+  return DoubleValue(N, [](const int v){ return v*2;}); 
+}
