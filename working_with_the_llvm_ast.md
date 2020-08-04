@@ -66,7 +66,7 @@ included. At this point, clang-query is something that's useful for prototyping 
 an AST matcher. If you'd like to use it to test for a specific use case then it'd be better to write a small toy example
 and run clang-query on it.
 
-For example, if one wants to write a matcher that matches any calls made to `std::move()` a toy example can be written
+For example, if one wants to write a matcher that matches any calls made to ```cpp std::move()``` a toy example can be written
 to make calls to `std::move()` and the matcher can be tested using clang-query. 
 
 As of now the only way to test your matcher on RTC code is to build clang-tidy with your changes and run your custom
@@ -80,7 +80,7 @@ It is highly advisable to do all clang-query experimentation on [Compiler Explor
 command line tool as of now has very poor formatting capability. For example, the following matcher matches any calls
 made to `std::move()`:
 
-```
+```cpp
 m callExpr(callee(functionDecl(hasName("std::move"))), argumentCountIs(1))
 ```
 
