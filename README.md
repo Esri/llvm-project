@@ -261,3 +261,7 @@ Now tar these into a package that will be untarred onto developer's machines wit
 ```sh
 tar --create --file=9.0.0_clang_libc++_x64.tar.gz --absolute-names -v --gzip /usr/local/rtc
 ```
+## Working with LLVM AST and Writing Your Own Clang-Tidy Checkers
+
+The document [Working with the LLVM AST](working_with_the_llvm_ast.md) explores resources and tips for understanding 
+the LLVM AST, writing new clang-tidy checkers and modifying existing clang-tidy checkers.
