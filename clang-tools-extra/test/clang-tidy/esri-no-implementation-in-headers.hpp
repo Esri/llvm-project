@@ -142,6 +142,11 @@ namespace {
 int e = 2; // CHECK-MESSAGES: :[[@LINE]]:5: warning: anonymously namespaced 'e' defined in a header file;
 } // namespace
 
+// Even if a definition is constexpr, anonymous namespaces are not allowed.
+namespace {
+constexpr int invalid_constexpr_var = 2; // CHECK-MESSAGES: :[[@LINE]]:15: warning: anonymously namespaced 'invalid_constexpr_var' defined in a header file; 
+} // namespace
+
 const char *const g = "foo"; // OK: internal linkage variable definition.
 static int h = 1;            // OK: internal linkage variable definition.
 const int i = 1;             // OK: internal linkage variable definition.
@@ -194,13 +199,14 @@ class StaticConstExpr {
 
 constexpr int foo = 42; // OK: constexpr variable defined in header.
 
+// Helper struct for defining a constexpr variable in a template.
 template<typename T>
-struct EB {
+struct AllowedVariable {
   static constexpr bool value = true;
 };
 
 template<typename T>
-constexpr bool is_good = EB<T>::value; // OK: constexpr variable defined in template.
+constexpr bool allowed_variable_value = AllowedVariable<T>::value; // OK: constexpr variable defined in template.
 
 template<typename Fn>
 int DoubleValue(int n, Fn&& fn)
