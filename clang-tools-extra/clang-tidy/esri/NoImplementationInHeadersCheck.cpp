@@ -179,6 +179,11 @@ void NoImplementationInHeadersCheck::check(
       const auto *DC = MD->getDeclContext();
       while (DC->isRecord()) {
         if (const auto *RD = dyn_cast<CXXRecordDecl>(DC)) {
+          // If the definition is a lambda type then ignore.
+          if (RD->isLambda()) {
+            return;    
+          }
+
           if (isa<ClassTemplatePartialSpecializationDecl>(RD)) {
             return;
           }
@@ -237,6 +242,9 @@ void NoImplementationInHeadersCheck::check(
     if (VD->getDeclContext()->isDependentContext() && VD->isStaticDataMember())
       return;
     if (isTemplateInstantiation(VD->getTemplateSpecializationKind()))
+      return;
+    // Ignore if the variable is constexpr.
+    if (VD->isConstexpr())
       return;
     // Ignore variable definition within function scope.
     if (VD->hasLocalStorage() || VD->isStaticLocal())
