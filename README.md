@@ -120,3 +120,104 @@ Join [LLVM Discourse forums](https://discourse.llvm.org/), [discord chat](https:
 
 The LLVM project has adopted a [code of conduct](https://llvm.org/docs/CodeOfConduct.html) for
 participants to all modes of communication within the project.
+
+## RTC instructions
+
+The runtimecore branch of this project will include any custom checks and tools that are not part of the upstream of the
+llvm-project. These changes cannot easily be fast-forwarded as they are generally based on a release of llvm which
+diverges from the main trunk every release. Once RTC upgrades, a tag called runtimecore_X.X.X will be created
+symbolicating the llvm-project release that was being used at the time.
+
+### Working with LLVM AST and Writing Your Own Clang-Tidy Checkers
+
+The document [Working with the LLVM AST](working_with_the_llvm_ast.md) explores resources and tips for understanding
+the LLVM AST, writing new clang-tidy checkers and modifying existing clang-tidy checkers.
+
+### Clone the runtimecore branch of the llvm-project to get access to the esri additional fixes and checks
+
+Clone the custom branch of llvm and create a build directory where we'll create the build and store all intermediate and
+build files.
+
+```sh
+git clone -b runtimecore https://github.com/Esri/llvm-project.git ${HOME}
+mkdir -p ${HOME}/llvm-project/build && cd ${HOME}/llvm-project/build
+```
+
+### Linux Initial Build with RHEL 7
+
+For linux, we also need to hand build clang and libc++ as a method to be able to use C++17 which is not possible when
+using libstdc++. This is because the lowest support platform that we support does not have that capability. We'll need
+to build everything on our lowest supported platform which is RHEL 7, devtoolset 4. This contains the oldest libstdc++
+and libc (GLIBC 2.17). Builds against these libs are forward compatible but not backwards compatible. Make sure you have
+enough room on the VM (75GB).
+
+#### Install a few dependencies
+
+```sh
+sudo yum install git wget
+# Follow https://www.softwarecollections.org/en/scls/rhscl/devtoolset-4/ to install devtools-4 for a newer libstdc++
+# Follow http://jotmynotes.blogspot.com/2016/10/updating-cmake-from-2811-to-362-or.html to install cmake but use a
+# version higher than 3.8.
+# Follow https://snapcraft.io/install/ccache/centos to install ccache
+```
+
+#### Download llvm 11 for ubuntu 16 to build our custom llvm 11 libraries and put it at /usr/local/llvm
+
+```sh
+wget https://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+tar -xf clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+sudo mv clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04 /usr/local/llvm
+rm clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
+```
+
+#### Build the clang toolchain and libraries specially in order to support RHEL
+
+```sh
+mkdir -p ~/llvm-project/build && cd ~/llvm-project/build
+
+cmake -G "Unix Makefiles" ../llvm \
+  -DLLVM_ENABLE_PROJECTS="clang;compiler-rt;libcxx;libcxxabi;libunwind;lld" \
+  -DCMAKE_INSTALL_PREFIX=/usr/local/rtc/llvm/11.0.0 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DLLVM_ENABLE_LTO=Thin \
+  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+  -DCMAKE_C_COMPILER=/usr/local/llvm/bin/clang \
+  -DCMAKE_CXX_COMPILER=/usr/local/llvm/bin/clang++ \
+  -DCMAKE_RANLIB=/usr/local/llvm/bin/llvm-ranlib \
+  -DCMAKE_AR=/usr/local/llvm/bin/llvm-ar \
+  -DCMAKE_NM=/usr/local/llvm/bin/llvm-nm \
+  -DCMAKE_LINKER=/usr/local/llvm/bin/lld \
+  -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld -Wl,--thinlto-cache-dir=${HOME}/.thinLTO -Wl,--icf=all" \
+  -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld -Wl,--thinlto-cache-dir=${HOME}/.thinLTO -Wl,--icf=all" \
+  -DCMAKE_MODULE_LINKER_FLAGS="-fuse-ld=lld -Wl,--thinlto-cache-dir=${HOME}/.thinLTO -Wl,--icf=all" \
+  \
+  -DCOMPILER_RT_BUILD_XRAY=OFF \
+  -DCOMPILER_RT_BUILD_LIBFUZZER=OFF \
+  -DCOMPILER_RT_BUILD_PROFILE=ON \
+  \
+  -DLIBCXX_ENABLE_SHARED=OFF \
+  -DLIBCXX_HERMETIC_STATIC_LIBRARY=ON \
+  -DLIBCXX_USE_COMPILER_RT=ON \
+  -DLIBCXX_CXX_ABI=libcxxabi \
+  -DLIBCXX_CXX_ABI_INCLUDE_PATHS="${HOME}/llvm-project/libcxxabi/include" \
+  -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON \
+  \
+  -DLIBCXXABI_ENABLE_SHARED=OFF \
+  -DLIBCXXABI_HERMETIC_STATIC_LIBRARY=ON \
+  -DLIBCXXABI_USE_COMPILER_RT=ON \
+  -DLIBCXXABI_ENABLE_STATIC_UNWINDER=ON \
+  -DLIBCXXABI_USE_LLVM_UNWINDER=ON \
+  \
+  -DLIBUNWIND_ENABLE_SHARED=OFF \
+  -DLIBUNWIND_USE_COMPILER_RT=ON \
+  -DLIBUNWIND_HERMETIC_STATIC_LIBRARY=ON
+
+make -j10 -k
+sudo make install
+```
+
+Now tar these into a package that will be untarred onto developer's machines with only the bare minimum needed to build
+
+```sh
+tar --create --file=11.0.0_clang_libc++_x64.tar.gz --absolute-names -v --gzip /usr/local/rtc/llvm/11.0.0
+```
