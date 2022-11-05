@@ -121,7 +121,7 @@ Join [LLVM Discourse forums](https://discourse.llvm.org/), [discord chat](https:
 The LLVM project has adopted a [code of conduct](https://llvm.org/docs/CodeOfConduct.html) for
 participants to all modes of communication within the project.
 
-## RTC instructions
+# RTC instructions
 
 The runtimecore branch of this project will include any custom checks and tools that are not part of the upstream of the
 llvm-project. These changes cannot easily be fast-forwarded as they are generally based on a release of llvm which
@@ -135,195 +135,162 @@ This means that the tools need to be hand-built. Below are the minimum instructi
 change and will silently not run. This can easily be accomplished by dumping the configuration with the new version of
 clang-tidy and checking it against the older configuration.
 
-### Clone the runtimecore branch of the llvm-project to get access to the esri additional fixes and checks
+The linux clang compiler is also a custom build. This is due to the need of using libc++ and libc++abi instead of
+libstdc++. Since some of our products link to libstdc++, it is crucial to statically link in these runtimes and to hide
+all symbols in order to allow using both runtimes in one application.
 
-Clone the custom branch of llvm and create a build directory where we'll create the build and store all intermediate and
-build files.
+## Building LLVM Tools for RTC
+
+RTC builds the llvm tools in order to add custom clang-tidy checks and adds fixes to existing ones to work with our
+codebase. This requires a workspace setup to get all the additional tools that we use for code quality.
 
 ```sh
-git clone -b runtimecore https://github.com/Esri/llvm-project.git ${HOME}
-mkdir -p ${HOME}/llvm-project/build && cd llvm-project/build
+mkdir ${HOME}/llvm && cd ${HOME}/llvm
+git clone --branch runtimecore_15.0.4 git@github.com:Esri/llvm-project.git
+git clone --branch runtimecore_15.0.4 git@github.com:Esri/include-what-you-use.git
 ```
 
-## Linux
+### Linux
 
-Building the tools on Linux assumes that the initial build of linux below has already been completed and can be used
-here to bootstrap the process. The initial build below lists all steps needed to create the custom compiler but for the
-llvm tools, you do not need to go through with the entire process as the special considerations are only required for
-the build server.
+To build on Linux, it is strongly advised to use the llvm.dockerfile image to build. This will give you the correct
+ubuntu 20.04 environment that is needed to build with a compatible ABI. This matches our lowest supported platform for
+RTC and also makes sure that we're building with a clean environment C runtime. To build the image, you can run the
+following command:
+
+`docker build --tag=llvm:15.0.4 - < llvm-project/llvm.dockerfile`
+
+This will create the needed Ubuntu 20.04 sand-boxed environment that we'll use to build. This makes it so you can use
+any version of Ubuntu but still get the correct artifacts. It also ensures a minimal build environment that won't
+conflict with your host system. When you're ready to build, you can then start the container with the following command:
+
+`docker run --rm -it -u $(id -u):$(id -g) --volume ${HOME}/llvm:/llvm --workdir /llvm llvm:15.0.4 bash`
+
+You'll now be in the container environment bash and can run the cmake commands to build.
+
+```sh
+# Install dependencies (ignore is you're using a docker container)
+sudo apt install ccache clang git lld llvm zlib1g-dev
+
+# Configure the release build (Use Debug instead of Release in CMAKE_BUILD_TYPE to debug tools). Note that many of the
+# options need to be passed through the bootstrap build and are prepended with BOOTSTRAP_. The options that don't have
+# BOOSTRAP_ are either already defaulted as passthroughs using the BOOTSTRAP_DEFAULT_PASSTHROUGH list or changed by the
+# bootstrap build already, such as the CXX compiler.
+cmake -S llvm-project/llvm -B build -G "Ninja" \
+  -DCMAKE_AR="/usr/bin/llvm-ar" \
+  -DCMAKE_BUILD_TYPE="Release" \
+  -DCMAKE_C_COMPILER="/usr/bin/clang" \
+  -DCMAKE_C_COMPILER_LAUNCHER="/usr/bin/ccache" \
+  -DCMAKE_CXX_COMPILER="/usr/bin/clang++" \
+  -DCMAKE_CXX_COMPILER_LAUNCHER="/usr/bin/ccache" \
+  -DCMAKE_RANLIB="/usr/bin/llvm-ranlib" \
+  \
+  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" \
+  -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
+  -DLLVM_USE_LINKER="lld" \
+  \
+  -DCLANG_ENABLE_BOOTSTRAP=On \
+  \
+  -DBOOTSTRAP_CMAKE_INSTALL_PREFIX="/llvm/15.0.4" \
+  \
+  -DBOOTSTRAP_LLVM_DEFAULT_TARGET_TRIPLE="x86_64-unknown-linux-gnu" \
+  -DBOOTSTRAP_LLVM_ENABLE_LTO="Thin" \
+  -DBOOTSTRAP_LLVM_EXTERNAL_IWYU_SOURCE_DIR="/llvm/include-what-you-use" \
+  -DBOOTSTRAP_LLVM_EXTERNAL_PROJECTS="iwyu" \
+  -DBOOTSTRAP_LLVM_INSTALL_TOOLCHAIN_ONLY="ON" \
+  -DBOOTSTRAP_LLVM_USE_LINKER="lld" \
+  \
+  -DBOOTSTRAP_LIBCXX_CXX_ABI="libcxxabi" \
+  -DBOOTSTRAP_LIBCXX_ENABLE_SHARED="OFF" \
+  -DBOOTSTRAP_LIBCXX_ENABLE_STATIC_ABI_LIBRARY="ON" \
+  -DBOOTSTRAP_LIBCXX_HERMETIC_STATIC_LIBRARY="ON" \
+  -DBOOTSTRAP_LIBCXX_USE_COMPILER_RT="ON" \
+  \
+  -DBOOTSTRAP_LIBCXXABI_ENABLE_SHARED="OFF" \
+  -DBOOTSTRAP_LIBCXXABI_ENABLE_STATIC_UNWINDER="ON" \
+  -DBOOTSTRAP_LIBCXXABI_HERMETIC_STATIC_LIBRARY="ON" \
+  -DBOOTSTRAP_LIBCXXABI_USE_COMPILER_RT="ON" \
+  -DBOOTSTRAP_LIBCXXABI_USE_LLVM_UNWINDER="ON" \
+  \
+  -DBOOTSTRAP_LIBUNWIND_ENABLE_SHARED="OFF" \
+  -DBOOTSTRAP_LIBUNWIND_HIDE_SYMBOLS="ON" \
+  -DBOOTSTRAP_LIBUNWIND_USE_COMPILER_RT="ON"
+
+# run the clang tools tests to make sure the Esri specific tests pass
+cmake --build build -- check-clang-tools
+
+# build clang and then bootstrap the build with that clang to build all tools, runtimes and clang again using the
+# bootstrap build technique documented at https://llvm.org/docs/AdvancedBuilds.html
+cmake --build build -- stage2-install
+```
+
+### macOS
+
+To build on macOS, use RTC's well known compiler paths in order to keep equivalent behavior. The macOS configuration is
+nearly identical from linux but builds universal binaries to work with multiple architectures. It also turns off zstd
+support as it isn't needed and doesn't work with universal builds.
 
 ```sh
 # Install dependencies
-sudo apt-get install cmake ccache wget
-wget http://runtimezip.esri.com:8080/userContent/apps-archive/archive/local_system_setup/runtimecore/linux/9.0.0_clang_libc++_x64.tar.gz
-sudo tar xzPf 9.0.0_clang_libc++_x64.tar.gz
-rm 9.0.0_clang_libc++_x64.tar.gz
-# Release
-cmake -G "Unix Makefiles" ../llvm \
-  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;" \
-  -DCMAKE_INSTALL_PREFIX=${HOME}/rtc/llvm/9.0.0 \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DLLVM_ENABLE_LTO=Thin \
-  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-  -DCMAKE_C_COMPILER=/usr/local/rtc/llvm/9.0.0/bin/clang \
-  -DCMAKE_CXX_COMPILER=/usr/local/rtc/llvm/9.0.0/bin/clang++ \
-  -DCMAKE_AR=/usr/local/rtc/llvm/9.0.0/bin/llvm-ar \
-  -DCMAKE_LINKER=/usr/local/rtc/llvm/9.0.0/bin/lld \
-  -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld -Wl,--thinlto-cache-dir=${HOME}/.thinLTO -Wl,--icf=all" \
-  -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld -Wl,--thinlto-cache-dir=${HOME}/.thinLTO -Wl,--icf=all" \
-  -DCMAKE_MODULE_LINKER_FLAGS="-fuse-ld=lld -Wl,--thinlto-cache-dir=${HOME}/.thinLTO -Wl,--icf=all" \
-  -DIWYU_IN_TREE=ON \
-  -DCONSTEXPR_EVERYTHING_IN_TREE=ON
-# Debug
-cmake -G "Unix Makefiles" ../llvm \
-  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;" \
-  -DCMAKE_INSTALL_PREFIX=${HOME}/rtc/llvm/9.0.0 \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-  -DCMAKE_C_COMPILER=/usr/local/rtc/llvm/9.0.0/bin/clang \
-  -DCMAKE_CXX_COMPILER=/usr/local/rtc/llvm/9.0.0/bin/clang++ \
-  -DCMAKE_RANLIB=/usr/local/rtc/llvm/9.0.0/bin/llvm-ranlib \
-  -DCMAKE_AR=/usr/local/rtc/llvm/9.0.0/bin/llvm-ar \
-  -DCMAKE_LINKER=/usr/local/rtc/llvm/9.0.0/bin/lld \
-  -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
-  -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" \
-  -DCMAKE_MODULE_LINKER_FLAGS="-fuse-ld=lld" \
-  -DIWYU_IN_TREE=ON \
-  -DCONSTEXPR_EVERYTHING_IN_TREE=ON
-make -j10 -k check-clang-format check-clang-tools constexpr-everything include-what-you-use templight
-make -j10 install-clang-format install-clang-tidy install-constexpr-everything install-include-what-you-use install-templight
-```
+brew install cmake ccache ninja
 
-Since these tools will be built somewhat regularly with new features, unlike the rest of the compiler, it is best to
-copy the include folder from /usr/local/rtc/llvm/9.0.0 and put it into ${HOME}/rtc/llvm/9.0.0 to get the right headers.
+# Set the Xcode version to RTC's Xcode_13.2.1
+sudo xcode-select --switch /Applications/Xcode_13.2.1.app/Contents/Developer
 
-## macOS
-
-```sh
-brew install cmake ccache
-# Release
-cmake -G "Unix Makefiles" ../llvm \
-  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;" \
-  -DCMAKE_INSTALL_PREFIX=${HOME}/rtc/llvm/9.0.0 \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DLLVM_ENABLE_LTO=Thin \
-  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-  -DCMAKE_EXE_LINKER_FLAGS="-Wl,-cache_path_lto,${HOME}/.thinLTO -Wl,-prune_after_lto,604800" \
-  -DCMAKE_SHARED_LINKER_FLAGS="-Wl,-cache_path_lto,${HOME}/.thinLTO -Wl,-prune_after_lto,604800" \
-  -DCMAKE_MODULE_LINKER_FLAGS="-Wl,-cache_path_lto,${HOME}/.thinLTO -Wl,-prune_after_lto,604800" \
-  -DIWYU_IN_TREE=ON \
-  -DCONSTEXPR_EVERYTHING_IN_TREE=ON
-# Debug
-cmake -G "Unix Makefiles" ../llvm \
-  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;" \
-  -DCMAKE_INSTALL_PREFIX=${HOME}/rtc/llvm/9.0.0 \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-  -DIWYU_IN_TREE=ON \
-  -DCONSTEXPR_EVERYTHING_IN_TREE=ON
-make -j10 -k check-clang-format check-clang-tools constexpr-everything include-what-you-use templight
-make -j10 install-clang-format install-clang-tidy install-constexpr-everything install-include-what-you-use install-templight
-```
-
-## Windows
-
-```sh
-# Release
-cmake -G "Visual Studio 16 2019" ../llvm \
+# Configure the release build (Use Debug instead of Release in CMAKE_BUILD_TYPE to debug tools)
+cmake -S llvm-project/llvm -B build -G "Ninja" \
+  -DCMAKE_BUILD_TYPE="Release" \
+  -DCMAKE_C_COMPILER_LAUNCHER="ccache" \
+  -DCMAKE_CXX_COMPILER_LAUNCHER="ccache" \
+  -DCMAKE_INSTALL_PREFIX="15.0.4" \
+  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+  \
+  -DLLVM_ENABLE_LTO="Thin" \
   -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" \
-  -DCMAKE_BUILD_TYPE=Release \
-  -Thost=x64 \
-  -DIWYU_IN_TREE=ON \
-  -DCONSTEXPR_EVERYTHING_IN_TREE=ON
-# Debug
-cmake -G "Visual Studio 16 2019" ../llvm \
-  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -Thost=x64 \
-  -DIWYU_IN_TREE=ON \
-  -DCONSTEXPR_EVERYTHING_IN_TREE=ON
-# Open LLVM.sln and build check-clang-tools
-# Binaries will be in Release/bin. Most of the tests won't work as they're really only tuned for linux
+  -DLLVM_ENABLE_RUNTIMES="libcxx" \
+  -DLLVM_ENABLE_ZSTD="OFF" \
+  -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="include-what-you-use" \
+  -DLLVM_EXTERNAL_PROJECTS="iwyu"
+
+# build, check, and install the tools
+cmake --build build -- check-clang-tools include-what-you-use
+cmake --build build -- install-clang-format install-clang-resource-headers install-clang-tidy tools/iwyu/install
+
+# build and install the v1 headers needed by clang-tidy. This step will fail to link but we only need the headers and
+# there's no rule to only install the headers
+cmake --build build -- install-cxx
 ```
 
-### Linux Initial Build with RHEL 7
+### Windows
 
-For linux, we also need to hand build clang and libc++ as a method to be able to use C++17 which is not possible when
-using libstdc++. This is because the lowest support platform that we support does not have that capability. We'll need
-to build everything on our lowest supported platform which is RHEL 7, devtoolset 4. This contains the oldest libstdc++
-and libc (GLIBC 2.17). Builds against these libs are forward compatible but not backwards compatible. Make sure you have
-enough room on the VM (75GB).
+To build on Windows, you'll need to install Visual Studio 2022 to get access to a C++ compiler and the Developer
+console. You'll also need to install [chocolatey](https://chocolatey.org/install) in order to easily install cmake and
+ninja which will be used by the build. Once that is installed and choco is on the path, open an developer prompt by
+navigating to `Start` -> `x64 Native Tools Command Prompt for VS 2022` to run the following steps:
 
-#### Install a few dependencies
+```cmd
+# Install dependencies
+choco install cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
+choco install ninja
 
-```sh
-sudo yum install git wget
-# Follow https://www.softwarecollections.org/en/scls/rhscl/devtoolset-4/ to install devtools-4 for a newer libstdc++
-# Follow http://jotmynotes.blogspot.com/2016/10/updating-cmake-from-2811-to-362-or.html to install cmake but use a
-# version higher than 3.8.
-# Follow https://snapcraft.io/install/ccache/centos to install ccache
+# Configure the release build (Use Debug instead of Release in CMAKE_BUILD_TYPE to debug tools)
+cmake -S llvm-project/llvm -B build -G "Ninja" ^
+  -DCMAKE_BUILD_TYPE="Release" ^
+  -DCMAKE_INSTALL_PREFIX="15.0.4" ^
+  ^
+  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" ^
+  -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="include-what-you-use" ^
+  -DLLVM_EXTERNAL_PROJECTS="iwyu"
+
+# build, check, and install the tools
+cmake --build build -- check-clang-tools include-what-you-use
+cmake --build build -- install-clang-format install-clang-resource-headers install-clang-tidy tools/iwyu/install
 ```
 
-#### Download llvm 11 for ubuntu 16 to build our custom llvm 11 libraries and put it at /usr/local/llvm
+### Packaging
 
-```sh
-wget https://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-tar -xf clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-sudo mv clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04 /usr/local/llvm
-rm clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-```
-
-#### Build the clang toolchain and libraries specially in order to support RHEL
-
-```sh
-mkdir -p ~/llvm-project/build && cd ~/llvm-project/build
-
-cmake -G "Unix Makefiles" ../llvm \
-  -DLLVM_ENABLE_PROJECTS="clang;compiler-rt;libcxx;libcxxabi;libunwind;lld" \
-  -DCMAKE_INSTALL_PREFIX=/usr/local/rtc/llvm/11.0.0 \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DLLVM_ENABLE_LTO=Thin \
-  -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-  -DCMAKE_C_COMPILER=/usr/local/llvm/bin/clang \
-  -DCMAKE_CXX_COMPILER=/usr/local/llvm/bin/clang++ \
-  -DCMAKE_RANLIB=/usr/local/llvm/bin/llvm-ranlib \
-  -DCMAKE_AR=/usr/local/llvm/bin/llvm-ar \
-  -DCMAKE_NM=/usr/local/llvm/bin/llvm-nm \
-  -DCMAKE_LINKER=/usr/local/llvm/bin/lld \
-  -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld -Wl,--thinlto-cache-dir=${HOME}/.thinLTO -Wl,--icf=all" \
-  -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld -Wl,--thinlto-cache-dir=${HOME}/.thinLTO -Wl,--icf=all" \
-  -DCMAKE_MODULE_LINKER_FLAGS="-fuse-ld=lld -Wl,--thinlto-cache-dir=${HOME}/.thinLTO -Wl,--icf=all" \
-  \
-  -DCOMPILER_RT_BUILD_XRAY=OFF \
-  -DCOMPILER_RT_BUILD_LIBFUZZER=OFF \
-  -DCOMPILER_RT_BUILD_PROFILE=ON \
-  \
-  -DLIBCXX_ENABLE_SHARED=OFF \
-  -DLIBCXX_HERMETIC_STATIC_LIBRARY=ON \
-  -DLIBCXX_USE_COMPILER_RT=ON \
-  -DLIBCXX_CXX_ABI=libcxxabi \
-  -DLIBCXX_CXX_ABI_INCLUDE_PATHS="${HOME}/llvm-project/libcxxabi/include" \
-  -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON \
-  \
-  -DLIBCXXABI_ENABLE_SHARED=OFF \
-  -DLIBCXXABI_HERMETIC_STATIC_LIBRARY=ON \
-  -DLIBCXXABI_USE_COMPILER_RT=ON \
-  -DLIBCXXABI_ENABLE_STATIC_UNWINDER=ON \
-  -DLIBCXXABI_USE_LLVM_UNWINDER=ON \
-  \
-  -DLIBUNWIND_ENABLE_SHARED=OFF \
-  -DLIBUNWIND_USE_COMPILER_RT=ON \
-  -DLIBUNWIND_HERMETIC_STATIC_LIBRARY=ON
-
-make -j10 -k
-sudo make install
-```
-
-Now tar these into a package that will be untarred onto developer's machines with only the bare minimum needed to build
-
-```sh
-tar --create --file=11.0.0_clang_libc++_x64.tar.gz --absolute-names -v --gzip /usr/local/rtc/llvm/11.0.0
-```
+Once all tools are built and installed for a platform, you should have a 15.0.4 folder in your llvm folder. The final
+step here will be to zip this package up and archive them onto our network shares. From here, they can be pulled by the
+install_dependencies framework and placed locally on developer machines.
 
 ## Working with LLVM AST and Writing Your Own Clang-Tidy Checkers
 
