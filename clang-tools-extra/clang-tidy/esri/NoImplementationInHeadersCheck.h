@@ -1,37 +1,43 @@
-//===--- NoImplementationInHeadersCheck.h - clang-tidy-----------*- C++ -*-===//
+//===--- NoImplementationInHeadersCheck.h - clang-tidy -----------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_ESRI_NOIMPLEMENTATIONINHEADERSCHECK_H
-#define LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_ESRI_NOIMPLEMENTATIONINHEADERSCHECK_H
+#ifndef LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_ESRI_NO_IMPLEMENTATION_IN_HEADERS_H
+#define LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_ESRI_NO_IMPLEMENTATION_IN_HEADERS_H
 
-#include "../ClangTidy.h"
-#include "../utils/HeaderFileExtensionsUtils.h"
+#include "../ClangTidyCheck.h"
+#include "../utils/FileExtensionsUtils.h"
 
 namespace clang {
 namespace tidy {
 namespace esri {
 
+/// This is based on the misc-definitions-in-headers check
 /// Finds non-extern non-inline function and variable definitions in header
 /// files, which can lead to potential ODR violations.
 ///
 /// The check supports these options:
 ///   - `UseHeaderFileExtension`: Whether to use file extension to distinguish
 ///     header files. True by default.
-///   - `HeaderFileExtensions`: a comma-separated list of filename extensions of
-///     header files (The filename extension should not contain "." prefix).
-///     ",h,hh,hpp,hxx" by default.
-///     For extension-less header files, using an empty string or leaving an
-///     empty string between "," if there are other filename extensions.
+///   - `HeaderFileExtensions`: a semicolon-separated list of filename
+///     extensions of header files (The filename extension should not contain
+///     "." prefix). ";h;hh;hpp;hxx" by default.
 ///
+///     For extension-less header files, using an empty string or leaving an
+///     empty string between ";" if there are other filename extensions.
+///
+/// For the user-facing documentation see:
+/// http://clang.llvm.org/extra/clang-tidy/checks/misc/definitions-in-headers.html
 class NoImplementationInHeadersCheck : public ClangTidyCheck {
 public:
   NoImplementationInHeadersCheck(StringRef Name, ClangTidyContext *Context);
+  bool isLanguageVersionSupported(const LangOptions &LangOpts) const override {
+    return LangOpts.CPlusPlus11;
+  }
   void storeOptions(ClangTidyOptions::OptionMap &Opts) override;
   void registerMatchers(ast_matchers::MatchFinder *Finder) override;
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
@@ -39,12 +45,12 @@ public:
 private:
   const bool UseHeaderFileExtension;
   const bool AllowSoleDefaultDtor;
-  const std::string RawStringHeaderFileExtensions;
-  utils::HeaderFileExtensionsSet HeaderFileExtensions;
+  const StringRef RawStringHeaderFileExtensions;
+  utils::FileExtensionsSet HeaderFileExtensions;
 };
 
 } // namespace esri
 } // namespace tidy
 } // namespace clang
 
-#endif // LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_ESRI_NOIMPLEMENTATIONINHEADERSCHECK_H
+#endif // LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_ESRI_NO_IMPLEMENTATION_IN_HEADERS_H

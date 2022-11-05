@@ -1,12 +1,8 @@
-//===--- NoImplementationInHeadersCheck.cpp - clang-tidy-------------------===//
+//===--- NoImplementationInHeadersCheck.cpp - clang-tidy------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
-//
-// This file is custom modified to fit the ESRI coding guidelines.  It is
-// heavily based upon the misc-definitions-in-headers file provided by clang.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -22,8 +18,8 @@ namespace esri {
 
 namespace {
 
-AST_MATCHER_P(NamedDecl, usesHeaderFileExtension,
-              utils::HeaderFileExtensionsSet, HeaderFileExtensions) {
+AST_MATCHER_P(NamedDecl, usesHeaderFileExtension, utils::FileExtensionsSet,
+              HeaderFileExtensions) {
   return utils::isExpansionLocInHeaderFile(
       Node.getBeginLoc(), Finder->getASTContext().getSourceManager(),
       HeaderFileExtensions);
@@ -31,19 +27,18 @@ AST_MATCHER_P(NamedDecl, usesHeaderFileExtension,
 
 } // namespace
 
-NoImplementationInHeadersCheck::NoImplementationInHeadersCheck(
-    StringRef Name, ClangTidyContext *Context)
+NoImplementationInHeadersCheck::NoImplementationInHeadersCheck(StringRef Name,
+                                                     ClangTidyContext *Context)
     : ClangTidyCheck(Name, Context),
       UseHeaderFileExtension(Options.get("UseHeaderFileExtension", true)),
       AllowSoleDefaultDtor(Options.get("AllowSoleDefaultDtor", true)),
-      RawStringHeaderFileExtensions(
-          Options.getLocalOrGlobal("HeaderFileExtensions", ",h,hh,hpp,hxx")) {
-  if (!utils::parseHeaderFileExtensions(RawStringHeaderFileExtensions,
-                                        HeaderFileExtensions, ',')) {
-    // FIXME: Find a more suitable way to handle invalid configuration
-    // options.
-    llvm::errs() << "Invalid header file extension: "
-                 << RawStringHeaderFileExtensions << "\n";
+      RawStringHeaderFileExtensions(Options.getLocalOrGlobal(
+          "HeaderFileExtensions", utils::defaultHeaderFileExtensions())) {
+  if (!utils::parseFileExtensions(RawStringHeaderFileExtensions,
+                                  HeaderFileExtensions,
+                                  utils::defaultFileExtensionDelimiters())) {
+    this->configurationDiag("Invalid header file extension: '%0'")
+        << RawStringHeaderFileExtensions;
   }
 }
 
@@ -91,7 +86,6 @@ void NoImplementationInHeadersCheck::check(
   // satisfy the following requirements.
   const auto *ND = Result.Nodes.getNodeAs<NamedDecl>("name-decl");
   assert(ND);
-
   if (ND->isInvalidDecl())
     return;
 
