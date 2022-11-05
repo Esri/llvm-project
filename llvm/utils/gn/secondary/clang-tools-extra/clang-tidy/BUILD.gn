@@ -74,6 +74,7 @@ group("all-checks") {
     "//clang-tools-extra/clang-tidy/concurrency",
     "//clang-tools-extra/clang-tidy/cppcoreguidelines",
     "//clang-tools-extra/clang-tidy/darwin",
+    "//clang-tools-extra/clang-tidy/esri",
     "//clang-tools-extra/clang-tidy/fuchsia",
     "//clang-tools-extra/clang-tidy/google",
     "//clang-tools-extra/clang-tidy/hicpp",

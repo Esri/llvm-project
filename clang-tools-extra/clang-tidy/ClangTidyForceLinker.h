@@ -60,6 +60,11 @@ extern volatile int DarwinModuleAnchorSource;
 static int LLVM_ATTRIBUTE_UNUSED DarwinModuleAnchorDestination =
     DarwinModuleAnchorSource;
 
+// This anchor is used to force the linker to link the EsriModule.
+extern volatile int EsriModuleAnchorSource;
+static int LLVM_ATTRIBUTE_UNUSED EsriModuleAnchorDestination =
+    EsriModuleAnchorSource;
+
 // This anchor is used to force the linker to link the FuchsiaModule.
 extern volatile int FuchsiaModuleAnchorSource;
 static int LLVM_ATTRIBUTE_UNUSED FuchsiaModuleAnchorDestination =
