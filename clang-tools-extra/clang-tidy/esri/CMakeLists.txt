@@ -5,11 +5,15 @@ add_clang_library(clangTidyEsriModule
   NoImplementationInHeadersCheck.cpp
 
   LINK_LIBS
+  clangTidy
+  clangTidyUtils
+  )
+
+clang_target_link_libraries(clangTidyEsriModule
+  PRIVATE
+  clangAnalysis
   clangAST
   clangASTMatchers
   clangBasic
   clangLex
-  clangTidy
-  clangTidyUtils
-  clangTooling
   )
