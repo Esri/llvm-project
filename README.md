@@ -152,10 +152,11 @@ git clone --branch runtimecore_15.0.4 git@github.com:Esri/include-what-you-use.g
 
 ### Linux
 
-To build on Linux, it is strongly advised to use the llvm.dockerfile image to build. This will give you the correct
-ubuntu 20.04 environment that is needed to build with a compatible ABI. This matches our lowest supported platform for
-RTC and also makes sure that we're building with a clean environment C runtime. To build the image, you can run the
-following command:
+To build on Linux, you MUST use the [llvm.dockerfile](llvm.dockerfile) dockerfile to build. This will give you the
+correct ubuntu 20.04 environment that is needed to build with a compatible ABI. This matches our lowest supported
+platform for RTC and also makes sure that we're building with a clean environment C runtime. Using docker will also more
+easily allow you to build for arm64 using an arm64 based mac machine to get good compilation times. To build the image,
+you can run the following command:
 
 `docker build --tag=llvm:15.0.4 - < llvm-project/llvm.dockerfile`
 
@@ -168,9 +169,6 @@ conflict with your host system. When you're ready to build, you can then start t
 You'll now be in the container environment bash and can run the cmake commands to build.
 
 ```sh
-# Install dependencies (ignore is you're using a docker container)
-sudo apt install ccache clang git lld llvm zlib1g-dev
-
 # Configure the release build (Use Debug instead of Release in CMAKE_BUILD_TYPE to debug tools). Note that many of the
 # options need to be passed through the bootstrap build and are prepended with BOOTSTRAP_. The options that don't have
 # BOOSTRAP_ are either already defaulted as passthroughs using the BOOTSTRAP_DEFAULT_PASSTHROUGH list or changed by the
@@ -192,8 +190,9 @@ cmake -S llvm-project/llvm -B build -G "Ninja" \
   \
   -DBOOTSTRAP_CMAKE_INSTALL_PREFIX="/llvm/15.0.4" \
   \
-  -DBOOTSTRAP_LLVM_DEFAULT_TARGET_TRIPLE="x86_64-unknown-linux-gnu" \
+  -DBOOTSTRAP_LLVM_DEFAULT_TARGET_TRIPLE="$(uname -m)-unknown-linux-gnu" \
   -DBOOTSTRAP_LLVM_ENABLE_LTO="Thin" \
+  -DBOOTSTRAP_LLVM_ENABLE_PER_TARGET_RUNTIME_DIR="OFF" \
   -DBOOTSTRAP_LLVM_EXTERNAL_IWYU_SOURCE_DIR="/llvm/include-what-you-use" \
   -DBOOTSTRAP_LLVM_EXTERNAL_PROJECTS="iwyu" \
   -DBOOTSTRAP_LLVM_INSTALL_TOOLCHAIN_ONLY="ON" \
@@ -221,6 +220,19 @@ cmake --build build -- check-clang-tools
 # build clang and then bootstrap the build with that clang to build all tools, runtimes and clang again using the
 # bootstrap build technique documented at https://llvm.org/docs/AdvancedBuilds.html
 cmake --build build -- stage2-install
+
+# At this point, you'll have a toolchain that is built for x86_64 or aarch64. LLVM does provide support for
+# cross-compiling toolchains using bootstrapping but doing so requires setting up sysroots and cmake files that would be
+# good to check out during the next iteration of RTC's compiler upgrade but to move forward, instead just build
+# these toolchains independently and merge any new files from both architectures into each other for simplicity. When
+# the toolchains are zipped, add -x86_64 or -aarch64 to the package name so the install dependencies framework can get
+# the right architecture for the target node by using the ansibile_architecure.
+#
+# The following are some helpful links on what was used to get to this point:
+#
+# https://github.com/llvm/llvm-project/issues/57104
+# https://github.com/llvm/llvm-project/blob/main/clang/cmake/caches/Fuchsia-stage2.cmake
+# https://mcilloni.ovh/2021/02/09/cxx-cross-clang/
 ```
 
 ### macOS

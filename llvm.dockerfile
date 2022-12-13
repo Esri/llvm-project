@@ -1,5 +1,5 @@
 # Container that has all the tools needed to build the llvm-project and all additional tools
-FROM harbor-west.esri.com/runtime-docker-public/ubuntu:20.04
+FROM ubuntu:20.04
 
 # This stops krb5-user package from prompting for geographic region
 ENV DEBIAN_FRONTEND=noninteractive
