@@ -1,5 +1,5 @@
 # Container that has all the tools needed to build the llvm-project and all additional tools
-FROM harbor-west.esri.com/runtime-docker-public/ubuntu:20.04
+FROM ubuntu:20.04
 
 # This stops krb5-user package from prompting for geographic region
 ENV DEBIAN_FRONTEND=noninteractive
@@ -11,7 +11,7 @@ RUN \
   apt install -y \
   ccache \
   clang \
-  cmake \
+  curl \
   git \
   lld \
   llvm \
@@ -24,3 +24,12 @@ RUN \
 
 # set the ccache dir to the llvm mount location so it can persist across containers
 ENV CCACHE_DIR=/llvm/ccache
+
+# install a later version of cmake needed to build
+ENV cmake_version=3.20.0
+RUN \
+  curl --location --output /tmp/cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-$(uname -m).tar.gz \
+  && \
+  tar xzvf /tmp/cmake.tar.gz --directory /usr/local --strip-components=1 \
+  && \
+  rm /tmp/cmake.tar.gz
