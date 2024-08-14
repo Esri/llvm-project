@@ -1,8 +1,8 @@
 # Container that has all the tools needed to build the llvm-project and all additional tools
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 # This stops krb5-user package from prompting for geographic region
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND="noninteractive"
 
 # install dependencies
 RUN \
@@ -11,11 +11,13 @@ RUN \
   apt install -y \
   ccache \
   clang \
+  cmake \
   curl \
   git \
   lld \
   llvm \
   ninja-build \
+  zip \
   zlib1g-dev \
   && \
   rm -rf /var/lib/apt/lists/* /tmp/* \
@@ -23,13 +25,11 @@ RUN \
   echo "Done"
 
 # set the ccache dir to the llvm mount location so it can persist across containers
-ENV CCACHE_DIR=/llvm/ccache
+ENV CCACHE_DIR="/llvm/ccache"
 
-# install a later version of cmake needed to build
-ENV cmake_version=3.20.0
-RUN \
-  curl --location --output /tmp/cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-linux-$(uname -m).tar.gz \
-  && \
-  tar xzvf /tmp/cmake.tar.gz --directory /usr/local --strip-components=1 \
-  && \
-  rm /tmp/cmake.tar.gz
+# use docker build variables to set the llvm target architecture so all build commands can use it by using the build
+# time TARGETARCH variable and manipulating it to get the right uname
+ARG TARGETARCH
+ENV TARGETARCH="${TARGETARCH/amd/x86_}"
+ENV TARGETARCH="${TARGETARCH/arm/aarch}"
+ENV target="${TARGETARCH}-unknown-linux-gnu"

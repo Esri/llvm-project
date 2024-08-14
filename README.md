@@ -15,25 +15,25 @@ To get setup for the build, clone the right sources:
 
 ```sh
 mkdir ${HOME}/llvm && cd ${HOME}/llvm
-git clone --branch runtimecore_17.0.1 git@github.com:Esri/llvm-project.git
-git clone --branch runtimecore_17.0.1 git@github.com:Esri/include-what-you-use.git
+git clone --branch runtimecore_19.1.0 git@github.com:Esri/llvm-project.git
+git clone --branch runtimecore_19.1.0 git@github.com:Esri/include-what-you-use.git
 ```
 
 ## Building the Linux Compiler
 
 To build on Linux, you MUST use the [llvm.dockerfile](llvm.dockerfile) dockerfile to build. This will give you the
-correct ubuntu 20.04 environment that is needed to build with a compatible ABI. This matches our lowest supported
+correct ubuntu 22.04 environment that is needed to build with a compatible ABI. This matches our lowest supported
 platform for RTC and also makes sure that we're building with a clean environment C runtime. Using docker will also more
 easily allow you to build for arm64 using an arm64 based mac machine to get good compilation times. To build the image,
 you can run the following command:
 
-`docker build --tag=llvm:17.0.1 - < llvm-project/llvm.dockerfile`
+`docker build --tag=llvm:19.1.0 - < llvm-project/llvm.dockerfile`
 
-This will create the needed Ubuntu 20.04 sand-boxed environment that we'll use to build. This makes it so you can use
+This will create the needed Ubuntu 22.04 sand-boxed environment that we'll use to build. This makes it so you can use
 any version of Ubuntu but still get the correct artifacts. It also ensures a minimal build environment that won't
 conflict with your host system. When you're ready to build, you can then start the container with the following command:
 
-`docker run --rm -it -u $(id -u):$(id -g) --volume ${HOME}/llvm:/llvm --workdir /llvm llvm:17.0.1 bash`
+`docker run --rm -it -u $(id -u):$(id -g) --volume ${HOME}/llvm:/llvm --workdir /llvm llvm:19.1.0 bash`
 
 You'll now be in the container environment bash and can run the cmake commands to build.
 
@@ -57,7 +57,7 @@ cmake -S llvm-project/llvm -B build -G "Ninja" \
   \
   -DCLANG_ENABLE_BOOTSTRAP=On \
   \
-  -DBOOTSTRAP_CMAKE_INSTALL_PREFIX="/llvm/17.0.1" \
+  -DBOOTSTRAP_CMAKE_INSTALL_PREFIX="/llvm/19.1.0" \
   \
   -DBOOTSTRAP_LLVM_ENABLE_LTO="Thin" \
   -DBOOTSTRAP_LLVM_INSTALL_TOOLCHAIN_ONLY="ON" \
@@ -103,7 +103,7 @@ cmake --build build -- stage2-install
 
 ### Packaging
 
-Once all tools are built and installed for a platform, you should have a 17.0.1 folder in your llvm folder. The final
+Once all tools are built and installed for a platform, you should have a 19.1.0 folder in your llvm folder. The final
 step here will be to zip this package up and archive them onto our network shares. From here, they can be pulled by the
 install_dependencies framework and placed locally on developer machines.
 
