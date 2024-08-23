@@ -14,98 +14,123 @@ all symbols in order to allow using both runtimes in one application.
 To get setup for the build, clone the right sources:
 
 ```sh
-mkdir ${HOME}/llvm && cd ${HOME}/llvm
-git clone --branch runtimecore_19.1.0 git@github.com:Esri/llvm-project.git
-git clone --branch runtimecore_19.1.0 git@github.com:Esri/include-what-you-use.git
+mkdir -p ${HOME}/llvm && cd ${HOME}/llvm
+git clone --branch runtimecore_19.1.2 git@github.com:Esri/include-what-you-use.git
+git clone --branch runtimecore_19.1.2 git@github.com:Esri/llvm-project.git
 ```
 
-## Building the Linux Compiler
+## Linux
+
+### Building the Linux Compiler
 
 To build on Linux, you MUST use the [llvm.dockerfile](llvm.dockerfile) dockerfile to build. This will give you the
 correct ubuntu 22.04 environment that is needed to build with a compatible ABI. This matches our lowest supported
 platform for RTC and also makes sure that we're building with a clean environment C runtime. Using docker will also more
-easily allow you to build for arm64 using an arm64 based mac machine to get good compilation times. To build the image,
-you can run the following command:
-
-`docker build --tag=llvm:19.1.0 - < llvm-project/llvm.dockerfile`
-
-This will create the needed Ubuntu 22.04 sand-boxed environment that we'll use to build. This makes it so you can use
-any version of Ubuntu but still get the correct artifacts. It also ensures a minimal build environment that won't
-conflict with your host system. When you're ready to build, you can then start the container with the following command:
-
-`docker run --rm -it -u $(id -u):$(id -g) --volume ${HOME}/llvm:/llvm --workdir /llvm llvm:19.1.0 bash`
-
-You'll now be in the container environment bash and can run the cmake commands to build.
+easily allow you to build for arm64 using an arm64 based mac machine to get good compilation times. To build the images,
+you can run the following commands:
 
 ```sh
-# Configure the release build (Use Debug instead of Release in CMAKE_BUILD_TYPE to debug tools). Note that many of the
-# options need to be passed through the bootstrap build and are prepended with BOOTSTRAP_. The options that don't have
-# BOOSTRAP_ are either already defaulted as passthroughs using the BOOTSTRAP_DEFAULT_PASSTHROUGH list or changed by the
-# bootstrap build already, such as the CXX compiler.
-cmake -S llvm-project/llvm -B build -G "Ninja" \
+docker build --platform=linux/amd64 --tag=llvm:19.1.2-amd64 - < ${HOME}/llvm/llvm-project/llvm.dockerfile
+docker build --platform=linux/arm64 --tag=llvm:19.1.2-arm64 - < ${HOME}/llvm/llvm-project/llvm.dockerfile
+```
+
+This will create the needed Ubuntu 22.04 sand-boxed environments that we'll use to build. When you're ready to build,
+you can then start the container with the following command:
+
+`docker run --rm -it -u $(id -u):$(id -g) --volume ${HOME}/llvm:/llvm --workdir /llvm llvm:19.1.2-amd64 bash`
+
+You'll now be in the container environment bash and can run the cmake commands to build. The following Cmake commands
+are very similar to the [Fushsia](clang/cmake/caches/Fuchsia.cmake) commands. The commands will build the llvm compiler
+as well as all the runtimes that will be statically linked into RTC so the library can be as portable as possible and
+can run on applications that use the `libstdc++` runtime.
+
+```sh
+# ${target} is set at the dockerfile for convenience
+cmake -S llvm-project/llvm -B /llvm/${target}/build -G "Ninja" \
   -DCMAKE_AR="/usr/bin/llvm-ar" \
   -DCMAKE_BUILD_TYPE="Release" \
   -DCMAKE_C_COMPILER="/usr/bin/clang" \
   -DCMAKE_C_COMPILER_LAUNCHER="/usr/bin/ccache" \
   -DCMAKE_CXX_COMPILER="/usr/bin/clang++" \
   -DCMAKE_CXX_COMPILER_LAUNCHER="/usr/bin/ccache" \
+  -DCMAKE_INSTALL_PREFIX="/llvm/${target}/19.1.2" \
   -DCMAKE_RANLIB="/usr/bin/llvm-ranlib" \
   \
+  -DLLVM_BUILTIN_TARGETS="${target}" \
+  -DLLVM_ENABLE_LTO="Thin" \
   -DLLVM_ENABLE_PROJECTS="clang;lld" \
   -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
+  -DLLVM_INSTALL_TOOLCHAIN_ONLY="ON" \
+  -DLLVM_RUNTIME_TARGETS="${target}" \
   -DLLVM_USE_LINKER="lld" \
   \
-  -DCLANG_ENABLE_BOOTSTRAP=On \
-  \
-  -DBOOTSTRAP_CMAKE_INSTALL_PREFIX="/llvm/19.1.0" \
-  \
-  -DBOOTSTRAP_LLVM_ENABLE_LTO="Thin" \
-  -DBOOTSTRAP_LLVM_INSTALL_TOOLCHAIN_ONLY="ON" \
-  -DBOOTSTRAP_LLVM_USE_LINKER="lld" \
-  \
-  -DBOOTSTRAP_COMPILER_RT_CXX_LIBRARY="libcxx" \
-  -DBOOTSTRAP_COMPILER_RT_USE_BUILTINS_LIBRARY="ON" \
-  -DBOOTSTRAP_COMPILER_RT_USE_LLVM_UNWINDER="ON" \
-  \
-  -DBOOTSTRAP_LIBCXX_CXX_ABI="libcxxabi" \
-  -DBOOTSTRAP_LIBCXX_ENABLE_SHARED="OFF" \
-  -DBOOTSTRAP_LIBCXX_ENABLE_STATIC_ABI_LIBRARY="ON" \
-  -DBOOTSTRAP_LIBCXX_HERMETIC_STATIC_LIBRARY="ON" \
-  -DBOOTSTRAP_LIBCXX_USE_COMPILER_RT="ON" \
-  \
-  -DBOOTSTRAP_LIBCXXABI_ENABLE_SHARED="OFF" \
-  -DBOOTSTRAP_LIBCXXABI_ENABLE_STATIC_UNWINDER="ON" \
-  -DBOOTSTRAP_LIBCXXABI_HERMETIC_STATIC_LIBRARY="ON" \
-  -DBOOTSTRAP_LIBCXXABI_USE_COMPILER_RT="ON" \
-  -DBOOTSTRAP_LIBCXXABI_USE_LLVM_UNWINDER="ON" \
-  \
-  -DBOOTSTRAP_LIBUNWIND_ENABLE_SHARED="OFF" \
-  -DBOOTSTRAP_LIBUNWIND_HIDE_SYMBOLS="ON" \
-  -DBOOTSTRAP_LIBUNWIND_USE_COMPILER_RT="ON"
+  -DRUNTIMES_${target}_CMAKE_SYSTEM_NAME="Linux" \
+  -DRUNTIMES_${target}_CMAKE_BUILD_TYPE="Release" \
+  -DRUNTIMES_${target}_COMPILER_RT_USE_BUILTINS_LIBRARY="ON" \
+  -DRUNTIMES_${target}_LIBUNWIND_ENABLE_SHARED="OFF" \
+  -DRUNTIMES_${target}_LIBUNWIND_USE_COMPILER_RT="ON" \
+  -DRUNTIMES_${target}_LIBUNWIND_INSTALL_LIBRARY="OFF" \
+  -DRUNTIMES_${target}_LIBCXXABI_USE_COMPILER_RT="ON" \
+  -DRUNTIMES_${target}_LIBCXXABI_ENABLE_SHARED="OFF" \
+  -DRUNTIMES_${target}_LIBCXXABI_USE_LLVM_UNWINDER="ON" \
+  -DRUNTIMES_${target}_LIBCXXABI_ENABLE_STATIC_UNWINDER="ON" \
+  -DRUNTIMES_${target}_LIBCXXABI_INSTALL_LIBRARY="OFF" \
+  -DRUNTIMES_${target}_LIBCXX_USE_COMPILER_RT="ON" \
+  -DRUNTIMES_${target}_LIBCXX_ENABLE_SHARED="OFF" \
+  -DRUNTIMES_${target}_LIBCXX_ENABLE_STATIC_ABI_LIBRARY="ON" \
+  -DRUNTIMES_${target}_LIBCXX_ABI_VERSION="2" \
+  -DRUNTIMES_${target}_LLVM_ENABLE_ASSERTIONS="OFF" \
+  -DRUNTIMES_${target}_LLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
+  -DRUNTIMES_${target}_SANITIZER_CXX_ABI="libc++" \
+  -DRUNTIMES_${target}_SANITIZER_CXX_ABI_INTREE="ON"
 
-# build clang and then bootstrap the build with that clang to build all tools, runtimes and clang again using the
-# bootstrap build technique documented at https://llvm.org/docs/AdvancedBuilds.html
-cmake --build build -- stage2-install
-
-# At this point, you'll have a toolchain that is built for x86_64 or aarch64. LLVM does provide support for
-# cross-compiling toolchains using bootstrapping but doing so requires setting up sysroots and cmake files that would be
-# good to check out during the next iteration of RTC's compiler upgrade but to move forward, instead just build
-# these toolchains independently and merge any new files from both architectures into each other for simplicity. When
-# the toolchains are zipped, add -x86_64 or -aarch64 to the package name so the install dependencies framework can get
-# the right architecture for the target node by using the ansibile_architecure.
-#
-# The following are some helpful links on what was used to get to this point:
-#
-# https://github.com/llvm/llvm-project/issues/57104
-# https://github.com/llvm/llvm-project/blob/main/clang/cmake/caches/Fuchsia-stage2.cmake
-# https://mcilloni.ovh/2021/02/09/cxx-cross-clang/
+# build
+cmake --build /llvm/${target}/build -- install
 ```
 
-### Packaging
+Once you're done with the build for x64, exit the container and perform the above step again but this time, using the
+arm64 container with:
 
-Once all tools are built and installed for a platform, you should have a 19.1.0 folder in your llvm folder. The final
-step here will be to zip this package up and archive them onto our network shares. From here, they can be pulled by the
-install_dependencies framework and placed locally on developer machines.
+`docker run --rm -it -u $(id -u):$(id -g) --volume ${HOME}/llvm:/llvm --workdir /llvm llvm:19.1.2-arm64 bash`
+
+### Packaging the Linux Compiler
+
+At this point, you'll have two toolchains that are built for x86_64 and aarch64. LLVM does provide support for
+cross-compiling toolchains using bootstrapping but doing so requires setting up sysroots and cmake files that would be
+good to check out during the next iteration of RTC's compiler upgrade but to move forward, instead just build
+these toolchains independently and merge any new files from both architectures into each other for simplicity. When
+the toolchains are zipped, add -x86_64 or -aarch64 to the package name so the install dependencies framework can get
+the right architecture for the target node by using the ansibile_architecure.
+
+To merge the folders, you can perform a diff and then move over folders from one to the other and vice-versa.
+
+```bash
+$ diff -r aarch64-unknown-linux-gnu/19.1.2 x86_64-unknown-linux-gnu/19.1.2/ | grep -v 'Binary files'
+Only in aarch64-unknown-linux-gnu/19.1.2/include: aarch64-unknown-linux-gnu
+Only in x86_64-unknown-linux-gnu/19.1.2/include: x86_64-unknown-linux-gnu
+Only in aarch64-unknown-linux-gnu/19.1.2/lib: aarch64-unknown-linux-gnu
+Only in aarch64-unknown-linux-gnu/19.1.2/lib/clang/19/lib: aarch64-unknown-linux-gnu
+Only in x86_64-unknown-linux-gnu/19.1.2/lib/clang/19/lib: x86_64-unknown-linux-gnu
+Only in x86_64-unknown-linux-gnu/19.1.2/lib: x86_64-unknown-linux-gnu
+
+cp -r aarch64-unknown-linux-gnu/19.1.2/include/aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu/19.1.2/include/
+cp -r x86_64-unknown-linux-gnu/19.1.2/include/x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu/19.1.2/include/
+cp -r aarch64-unknown-linux-gnu/19.1.2/lib/aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu/19.1.2/lib/
+cp -r x86_64-unknown-linux-gnu/19.1.2/lib/x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu/19.1.2/lib/
+cp -r aarch64-unknown-linux-gnu/19.1.2/lib/clang/19/lib/aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu/19.1.2/lib/clang/19/lib/
+cp -r x86_64-unknown-linux-gnu/19.1.2/lib/clang/19/lib/x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu/19.1.2/lib/clang/19/lib/
+
+$ diff -r aarch64-unknown-linux-gnu/19.1.2 x86_64-unknown-linux-gnu/19.1.2/ | grep -v 'Binary files'
+# no output means we're synced
+```
+
+Now that both folders have the missing bits for both, zip them up using the architecture names so both cross-compilers
+can have the native binaries.
+
+```bash
+cd ${HOME}/llvm/x86_64-unknown-linux-gnu && zip -r llvm-19.1.2-x86_64.zip 19.1.2
+cd ${HOME}/llvm/aarch64-unknown-linux-gnu && zip -r llvm-19.1.2-aarch64.zip 19.1.2
+```
 
 # The LLVM Compiler Infrastructure
 
