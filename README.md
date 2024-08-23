@@ -15,8 +15,8 @@ To get setup for the build, clone the right sources:
 
 ```sh
 mkdir -p ${HOME}/llvm && cd ${HOME}/llvm
-git clone --branch runtimecore_19.1.0 git@github.com:Esri/llvm-project.git
 git clone --branch runtimecore_19.1.0 git@github.com:Esri/include-what-you-use.git
+git clone --branch runtimecore_19.1.0 git@github.com:Esri/llvm-project.git
 ```
 
 ## Linux
@@ -46,20 +46,22 @@ can run on applications that use the `libstdc++` runtime.
 
 ```sh
 # ${target} is set at the dockerfile for convenience
-cmake -S llvm-project/llvm -B ${target}/build -G "Ninja" \
+cmake -S llvm-project/llvm -B ${HOME}/llvm/${target}/build -G "Ninja" \
   -DCMAKE_AR="/usr/bin/llvm-ar" \
   -DCMAKE_BUILD_TYPE="Release" \
   -DCMAKE_C_COMPILER="/usr/bin/clang" \
   -DCMAKE_C_COMPILER_LAUNCHER="/usr/bin/ccache" \
   -DCMAKE_CXX_COMPILER="/usr/bin/clang++" \
   -DCMAKE_CXX_COMPILER_LAUNCHER="/usr/bin/ccache" \
-  -DCMAKE_INSTALL_PREFIX="/llvm/${target}/19.1.0" \
+  -DCMAKE_INSTALL_PREFIX="${HOME}/llvm/${target}/19.1.0" \
   -DCMAKE_RANLIB="/usr/bin/llvm-ranlib" \
   \
   -DLLVM_BUILTIN_TARGETS="${target}" \
   -DLLVM_ENABLE_LTO="Thin" \
-  -DLLVM_ENABLE_PROJECTS="clang;lld" \
+  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" \
   -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
+  -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="${HOME}/llvm/include-what-you-use" \
+  -DLLVM_EXTERNAL_PROJECTS="iwyu" \
   -DLLVM_INSTALL_TOOLCHAIN_ONLY="ON" \
   -DLLVM_RUNTIME_TARGETS="${target}" \
   -DLLVM_USE_LINKER="lld" \
@@ -84,8 +86,11 @@ cmake -S llvm-project/llvm -B ${target}/build -G "Ninja" \
   -DRUNTIMES_${target}_SANITIZER_CXX_ABI="libc++" \
   -DRUNTIMES_${target}_SANITIZER_CXX_ABI_INTREE="ON"
 
-# build
-cmake --build ${target}/build -- install
+# run the clang tools tests to make sure the Esri specific tests pass
+cmake --build ${HOME}/llvm/${target}/build -- check-clang-tools
+
+# install
+cmake --build ${HOME}/llvm/${target}/build -- install
 ```
 
 Once you're done with the build for x64, exit the container and perform the above step again but this time, using the
