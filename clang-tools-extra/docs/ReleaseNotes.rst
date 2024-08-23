@@ -203,6 +203,21 @@ New checks
   to reading out-of-bounds data due to inadequate or incorrect string null
   termination.
 
+- New :doc:`esri-NoImplementationInHeadersCheck
+  <clang-tidy/checks/esri/NoImplementationInHeadersCheck>` check.
+
+  FIXME: add release notes.
+
+- New :doc:`esri-NoImplementationInHeadersCheck
+  <clang-tidy/checks/esri/NoImplementationInHeadersCheck>` check.
+
+  FIXME: add release notes.
+
+- New :doc:`esri-NoImplementationInHeadersCheck
+  <clang-tidy/checks/esri/NoImplementationInHeadersCheck>` check.
+
+  FIXME: add release notes.
+
 - New :doc:`misc-use-internal-linkage
   <clang-tidy/checks/misc/use-internal-linkage>` check.
 
@@ -283,7 +298,7 @@ Changes in existing checks
   casts bug-free.
 
 - Improved :doc:`bugprone-exception-escape
-  <clang-tidy/checks/bugprone/exception-escape>`  check to correctly detect exception 
+  <clang-tidy/checks/bugprone/exception-escape>`  check to correctly detect exception
   handler of type ``CV void *`` as catching all  ``CV`` compatible pointer types.
 
 - Improved :doc:`bugprone-forwarding-reference-overload
