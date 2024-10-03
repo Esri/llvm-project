@@ -15,8 +15,8 @@ To get setup for the build, clone the right sources:
 
 ```sh
 mkdir -p ${HOME}/llvm && cd ${HOME}/llvm
-git clone --branch runtimecore_19.1.0 git@github.com:Esri/include-what-you-use.git
-git clone --branch runtimecore_19.1.0 git@github.com:Esri/llvm-project.git
+git clone --branch runtimecore_19.1.1 git@github.com:Esri/include-what-you-use.git
+git clone --branch runtimecore_19.1.1 git@github.com:Esri/llvm-project.git
 ```
 
 ## Linux
