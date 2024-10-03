@@ -32,4 +32,4 @@ ENV CCACHE_DIR="/llvm/ccache"
 ARG TARGETARCH
 ENV TARGETARCH="${TARGETARCH/amd/x86_}"
 ENV TARGETARCH="${TARGETARCH/arm/aarch}"
-ENV target="${TARGETARCH}-unknown-linux-gnu"
+ENV TARGET="${TARGETARCH}-unknown-linux-gnu"

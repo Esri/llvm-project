@@ -45,52 +45,52 @@ as well as all the runtimes that will be statically linked into RTC so the libra
 can run on applications that use the `libstdc++` runtime.
 
 ```sh
-# ${target} is set at the dockerfile for convenience
-cmake -S llvm-project/llvm -B ${HOME}/llvm/${target}/build -G "Ninja" \
+# ${TARGET} is set at the dockerfile for convenience
+cmake -S llvm-project/llvm -B /llvm/${TARGET}/build -G "Ninja" \
   -DCMAKE_AR="/usr/bin/llvm-ar" \
   -DCMAKE_BUILD_TYPE="Release" \
   -DCMAKE_C_COMPILER="/usr/bin/clang" \
   -DCMAKE_C_COMPILER_LAUNCHER="/usr/bin/ccache" \
   -DCMAKE_CXX_COMPILER="/usr/bin/clang++" \
   -DCMAKE_CXX_COMPILER_LAUNCHER="/usr/bin/ccache" \
-  -DCMAKE_INSTALL_PREFIX="${HOME}/llvm/${target}/19.1.0" \
+  -DCMAKE_INSTALL_PREFIX="/llvm/${TARGET}/19.1.0" \
   -DCMAKE_RANLIB="/usr/bin/llvm-ranlib" \
   \
-  -DLLVM_BUILTIN_TARGETS="${target}" \
+  -DLLVM_BUILTIN_TARGETS="${TARGET}" \
   -DLLVM_ENABLE_LTO="Thin" \
   -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" \
   -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
-  -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="${HOME}/llvm/include-what-you-use" \
+  -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="/llvm/include-what-you-use" \
   -DLLVM_EXTERNAL_PROJECTS="iwyu" \
   -DLLVM_INSTALL_TOOLCHAIN_ONLY="ON" \
-  -DLLVM_RUNTIME_TARGETS="${target}" \
+  -DLLVM_RUNTIME_TARGETS="${TARGET}" \
   -DLLVM_USE_LINKER="lld" \
   \
-  -DRUNTIMES_${target}_CMAKE_SYSTEM_NAME="Linux" \
-  -DRUNTIMES_${target}_CMAKE_BUILD_TYPE="Release" \
-  -DRUNTIMES_${target}_COMPILER_RT_USE_BUILTINS_LIBRARY="ON" \
-  -DRUNTIMES_${target}_LIBUNWIND_ENABLE_SHARED="OFF" \
-  -DRUNTIMES_${target}_LIBUNWIND_USE_COMPILER_RT="ON" \
-  -DRUNTIMES_${target}_LIBUNWIND_INSTALL_LIBRARY="OFF" \
-  -DRUNTIMES_${target}_LIBCXXABI_USE_COMPILER_RT="ON" \
-  -DRUNTIMES_${target}_LIBCXXABI_ENABLE_SHARED="OFF" \
-  -DRUNTIMES_${target}_LIBCXXABI_USE_LLVM_UNWINDER="ON" \
-  -DRUNTIMES_${target}_LIBCXXABI_ENABLE_STATIC_UNWINDER="ON" \
-  -DRUNTIMES_${target}_LIBCXXABI_INSTALL_LIBRARY="OFF" \
-  -DRUNTIMES_${target}_LIBCXX_USE_COMPILER_RT="ON" \
-  -DRUNTIMES_${target}_LIBCXX_ENABLE_SHARED="OFF" \
-  -DRUNTIMES_${target}_LIBCXX_ENABLE_STATIC_ABI_LIBRARY="ON" \
-  -DRUNTIMES_${target}_LIBCXX_ABI_VERSION="2" \
-  -DRUNTIMES_${target}_LLVM_ENABLE_ASSERTIONS="OFF" \
-  -DRUNTIMES_${target}_LLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
-  -DRUNTIMES_${target}_SANITIZER_CXX_ABI="libc++" \
-  -DRUNTIMES_${target}_SANITIZER_CXX_ABI_INTREE="ON"
+  -DRUNTIMES_${TARGET}_CMAKE_SYSTEM_NAME="Linux" \
+  -DRUNTIMES_${TARGET}_CMAKE_BUILD_TYPE="Release" \
+  -DRUNTIMES_${TARGET}_COMPILER_RT_USE_BUILTINS_LIBRARY="ON" \
+  -DRUNTIMES_${TARGET}_LIBUNWIND_ENABLE_SHARED="OFF" \
+  -DRUNTIMES_${TARGET}_LIBUNWIND_USE_COMPILER_RT="ON" \
+  -DRUNTIMES_${TARGET}_LIBUNWIND_INSTALL_LIBRARY="OFF" \
+  -DRUNTIMES_${TARGET}_LIBCXXABI_USE_COMPILER_RT="ON" \
+  -DRUNTIMES_${TARGET}_LIBCXXABI_ENABLE_SHARED="OFF" \
+  -DRUNTIMES_${TARGET}_LIBCXXABI_USE_LLVM_UNWINDER="ON" \
+  -DRUNTIMES_${TARGET}_LIBCXXABI_ENABLE_STATIC_UNWINDER="ON" \
+  -DRUNTIMES_${TARGET}_LIBCXXABI_INSTALL_LIBRARY="OFF" \
+  -DRUNTIMES_${TARGET}_LIBCXX_USE_COMPILER_RT="ON" \
+  -DRUNTIMES_${TARGET}_LIBCXX_ENABLE_SHARED="OFF" \
+  -DRUNTIMES_${TARGET}_LIBCXX_ENABLE_STATIC_ABI_LIBRARY="ON" \
+  -DRUNTIMES_${TARGET}_LIBCXX_ABI_VERSION="2" \
+  -DRUNTIMES_${TARGET}_LLVM_ENABLE_ASSERTIONS="OFF" \
+  -DRUNTIMES_${TARGET}_LLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
+  -DRUNTIMES_${TARGET}_SANITIZER_CXX_ABI="libc++" \
+  -DRUNTIMES_${TARGET}_SANITIZER_CXX_ABI_INTREE="ON"
 
 # run the clang tools tests to make sure the Esri specific tests pass
-cmake --build ${HOME}/llvm/${target}/build -- check-clang-tools
+cmake --build /llvm/${TARGET}/build -- check-clang-tools
 
 # install
-cmake --build ${HOME}/llvm/${target}/build -- install
+cmake --build /llvm/${TARGET}/build -- install
 ```
 
 Once you're done with the build for x64, exit the container and perform the above step again but this time, using the
