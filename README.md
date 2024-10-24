@@ -58,8 +58,10 @@ cmake -S llvm-project/llvm -B /llvm/${target}/build -G "Ninja" \
   \
   -DLLVM_BUILTIN_TARGETS="${target}" \
   -DLLVM_ENABLE_LTO="Thin" \
-  -DLLVM_ENABLE_PROJECTS="clang;lld" \
+  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" \
   -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
+  -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="/llvm/include-what-you-use" \
+  -DLLVM_EXTERNAL_PROJECTS="iwyu" \
   -DLLVM_INSTALL_TOOLCHAIN_ONLY="ON" \
   -DLLVM_RUNTIME_TARGETS="${target}" \
   -DLLVM_USE_LINKER="lld" \
@@ -84,7 +86,10 @@ cmake -S llvm-project/llvm -B /llvm/${target}/build -G "Ninja" \
   -DRUNTIMES_${target}_SANITIZER_CXX_ABI="libc++" \
   -DRUNTIMES_${target}_SANITIZER_CXX_ABI_INTREE="ON"
 
-# build
+# run the clang tools tests to make sure the Esri specific tests pass
+cmake --build ${HOME}/llvm/${target}/build -- check-clang-tools
+
+# install
 cmake --build /llvm/${target}/build -- install
 ```
 
