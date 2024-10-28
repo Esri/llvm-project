@@ -137,6 +137,80 @@ cd ${HOME}/llvm/x86_64-unknown-linux-gnu && zip -r llvm-19.1.2-x86_64.zip 19.1.2
 cd ${HOME}/llvm/aarch64-unknown-linux-gnu && zip -r llvm-19.1.2-aarch64.zip 19.1.2
 ```
 
+### macOS
+
+To build on macOS, use RTC's well known compiler paths in order to keep equivalent behavior. The macOS configuration is
+nearly identical from linux but builds universal binaries to work with multiple architectures. It also turns off zstd
+support as it isn't needed and doesn't work with universal builds.
+
+```sh
+# Install dependencies
+brew install cmake ccache ninja
+
+# Set the Xcode version to RTC's Xcode_13.2.1
+sudo xcode-select --switch /Applications/Xcode_13.2.1.app/Contents/Developer
+
+# Configure the release build (Use Debug instead of Release in CMAKE_BUILD_TYPE to debug tools)
+cmake -S llvm-project/llvm -B build -G "Ninja" \
+  -DCMAKE_BUILD_TYPE="Release" \
+  -DCMAKE_C_COMPILER_LAUNCHER="ccache" \
+  -DCMAKE_CXX_COMPILER_LAUNCHER="ccache" \
+  -DCMAKE_INSTALL_PREFIX="15.0.4" \
+  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+  \
+  -DLLVM_ENABLE_LTO="Thin" \
+  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" \
+  -DLLVM_ENABLE_RUNTIMES="libcxx" \
+  -DLLVM_ENABLE_ZSTD="OFF" \
+  -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="include-what-you-use" \
+  -DLLVM_EXTERNAL_PROJECTS="iwyu"
+
+# build, check, and install the tools
+cmake --build build -- check-clang-tools include-what-you-use
+cmake --build build -- install-clang-format install-clang-resource-headers install-clang-tidy tools/iwyu/install
+
+# build and install the v1 headers needed by clang-tidy. This step will fail to link but we only need the headers and
+# there's no rule to only install the headers
+cmake --build build -- install-cxx
+```
+
+### Windows
+
+To build on Windows, you'll need to install Visual Studio 2022 to get access to a C++ compiler and the Developer
+console. You'll also need to install [chocolatey](https://chocolatey.org/install) in order to easily install cmake and
+ninja which will be used by the build. Once that is installed and choco is on the path, open an developer prompt by
+navigating to `Start` -> `x64 Native Tools Command Prompt for VS 2022` to run the following steps:
+
+```cmd
+# Install dependencies
+choco install cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
+choco install ninja
+
+# Configure the release build (Use Debug instead of Release in CMAKE_BUILD_TYPE to debug tools)
+cmake -S llvm-project/llvm -B build -G "Ninja" ^
+  -DCMAKE_BUILD_TYPE="Release" ^
+  -DCMAKE_INSTALL_PREFIX="15.0.4" ^
+  ^
+  -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" ^
+  -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="include-what-you-use" ^
+  -DLLVM_EXTERNAL_PROJECTS="iwyu"
+
+# build, check, and install the tools
+cmake --build build -- check-clang-tools include-what-you-use
+cmake --build build -- install-clang-format install-clang-resource-headers install-clang-tidy tools/iwyu/install
+```
+
+### Packaging
+
+Once all tools are built and installed for a platform, you should have a 15.0.4 folder in your llvm folder. The final
+step here will be to zip this package up and archive them onto our network shares. From here, they can be pulled by the
+install_dependencies framework and placed locally on developer machines.
+
+## Working with LLVM AST and Writing Your Own Clang-Tidy Checkers
+
+The document [Working with the LLVM AST](working_with_the_llvm_ast.md) explores resources and tips for understanding
+the LLVM AST, writing new clang-tidy checkers and modifying existing clang-tidy checkers.
+
 # The LLVM Compiler Infrastructure
 
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/llvm/llvm-project/badge)](https://securityscorecards.dev/viewer/?uri=github.com/llvm/llvm-project)
