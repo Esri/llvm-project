@@ -7,6 +7,7 @@ reliant on the AST and written using the AST. The following sections go into res
 in gaining a better understanding of the LLVM AST and writing code using it.
 
 ## Table of Contents
+
 - [Working With the LLVM AST and Using it to Make Changes to Clang-Tidy Source](#working-with-the-llvm-ast-and-using-it-to-make-changes-to-clang-tidy-source)
   - [Table of Contents](#table-of-contents)
   - [Understanding the AST](#understanding-the-ast)
@@ -73,7 +74,6 @@ As of now the only way to test your matcher on RTC code is to build clang-tidy w
 binary using the clang-tidy script to observe whether it matches any violations or does not repeat any false positive
 violations.
 
-
 ### Using clang-query on Compiler Explorer vs Using it in your Terminal
 
 It is highly advisable to do all clang-query experimentation on [Compiler Explorer](www.godbolt.org). The clang-query
@@ -111,7 +111,7 @@ the `performance-unnecessary-value-param` check is not returning anything even w
 in it: how do we debug it? One way to do this is to set a breakpoint and create a `launch.json` file which will launch
 the debugger in VS Code. A sample `launch.json` file looks like this:
 
-```
+```json
 {
 "version": "0.2.0",
     "configurations": [
@@ -196,7 +196,6 @@ comparisons between the original test file and a temporary output file that is s
 output. If a mismatch is found, the script returns an error and a build failure when building clang-tools-extra along
 with running unit tests and regression tests. Every tests where a change should occur has a `// CHECK-FIXES:` line with
 the change, for example:
-
 
 ```cpp
 void positiveExpensiveConstValue(const ExpensiveToCopyType Obj);
