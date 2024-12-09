@@ -12,6 +12,7 @@
 #include "../ClangTidy.h"
 #include "../ClangTidyModule.h"
 #include "../ClangTidyModuleRegistry.h"
+#include "ImplicitCastToSizetCheck.h"
 #include "NoImplementationInHeadersCheck.h"
 
 namespace clang {
@@ -21,6 +22,8 @@ namespace esri {
 class EsriModule : public ClangTidyModule {
 public:
   void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
+    CheckFactories.registerCheck<ImplicitCastToSizetCheck>(
+        "esri-implicit-cast-to-sizet");
     CheckFactories.registerCheck<NoImplementationInHeadersCheck>(
         "esri-no-implementation-in-headers");
   }

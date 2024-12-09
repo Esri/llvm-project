@@ -2,6 +2,7 @@ set(LLVM_LINK_COMPONENTS support)
 
 add_clang_library(clangTidyEsriModule
   EsriTidyModule.cpp
+  ImplicitCastToSizetCheck.cpp
   NoImplementationInHeadersCheck.cpp
 
   LINK_LIBS
