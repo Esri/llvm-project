@@ -55,6 +55,14 @@ void warning_when_implicit_passing_value_as_func_argument()
   // CHECK-MESSAGES: :[[@LINE-1]]:5: warning: implicit cast to size_t may be a narrowing cast
 }
 
+void warning_from_subtraction_of_int64()
+{
+  int64_t input1{2};
+  int64_t input2{1};
+  size_t val = input1 - input2;
+  // CHECK-MESSAGES: :[[@LINE-1]]:16: warning: implicit cast to size_t may be a narrowing cast
+}
+
 // Verified cases where no warning is raised
 
 void no_warning_for_literals()
@@ -73,6 +81,20 @@ void no_warning_for_literals_if_no_truncation()
   size_t offset_signed = int64_t{1};
   size_t offset_unsigned = uint64_t{1000};
   size_t offset_longlong = (long long)10000;
+}
+
+void no_warning_from_subtraction_of_int32()
+{
+  int32_t input1{2};
+  int32_t input2{1};
+  size_t val = input1 - input2;
+}
+
+void no_warning_from_subtraction_of_pointers()
+{
+  const char* text_begin = "Hello";
+  const char* text_end = "World";
+  size_t num_remaining = text_end - text_begin;
 }
 
 // Other things that could trigger a false positive

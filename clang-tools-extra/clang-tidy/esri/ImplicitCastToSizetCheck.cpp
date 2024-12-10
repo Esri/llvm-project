@@ -39,6 +39,12 @@ void ImplicitCastToSizetCheck::registerMatchers(MatchFinder *Finder) {
         unless(ConditionalWithLiterals),  // ...or a ternary operator where both branches are literals
         unless(parenExpr(                 // ...or parenthesis surrounding a
           has(ConditionalWithLiterals)    // ...ternary operator where both branches are literals
+        )),
+
+        unless(binaryOperator(            // ...or a subtraction of two pointers
+          hasOperatorName("-"),
+          hasLHS(hasType(isAnyPointer())),
+          hasRHS(hasType(isAnyPointer()))
         ))
       ).bind("se"))
     ).bind("implicit_cast"),
