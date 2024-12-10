@@ -81,7 +81,7 @@ void ImplicitCastToSizetCheck::check(const MatchFinder::MatchResult &Result) {
     MinValue = MinValue.extOrTrunc(ExprResultWidth);
     MinValue.setIsSigned(ConstExprResult->isSigned());
 
-    if (*ConstExprResult < MaxValue && *ConstExprResult >= MinValue)
+    if (*ConstExprResult <= MaxValue && *ConstExprResult >= MinValue)
       return;
   }
 
