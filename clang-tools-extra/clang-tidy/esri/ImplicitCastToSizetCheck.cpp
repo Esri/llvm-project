@@ -70,20 +70,19 @@ void ImplicitCastToSizetCheck::check(const MatchFinder::MatchResult &Result) {
     // not a negative value
     if (ExprResultWidth == 32 && !ConstExprResult->isNegative())
       return;
-    else {
-      // Make sure the constant value was within the valid range for a 32-bit
-      // unsigned integer (size_t on windows_x86)
-      auto MaxValue = llvm::APSInt::getMaxValue(32, true);
-      MaxValue = MaxValue.extOrTrunc(ExprResultWidth);
-      MaxValue.setIsSigned(ConstExprResult->isSigned());
 
-      auto MinValue = llvm::APSInt::getMinValue(32, true);
-      MinValue = MinValue.extOrTrunc(ExprResultWidth);
-      MinValue.setIsSigned(ConstExprResult->isSigned());
+    // Make sure the constant value was within the valid range for a 32-bit
+    // unsigned integer (size_t on windows_x86)
+    auto MaxValue = llvm::APSInt::getMaxValue(32, true);
+    MaxValue = MaxValue.extOrTrunc(ExprResultWidth);
+    MaxValue.setIsSigned(ConstExprResult->isSigned());
 
-      if (*ConstExprResult < MaxValue && *ConstExprResult >= MinValue)
-        return;
-    }
+    auto MinValue = llvm::APSInt::getMinValue(32, true);
+    MinValue = MinValue.extOrTrunc(ExprResultWidth);
+    MinValue.setIsSigned(ConstExprResult->isSigned());
+
+    if (*ConstExprResult < MaxValue && *ConstExprResult >= MinValue)
+      return;
   }
 
   diag(MatchedExpr->getBeginLoc(), "implicit cast to size_t may be a narrowing cast")
