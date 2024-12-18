@@ -69,6 +69,8 @@ cmake -S llvm-project/llvm -B /llvm/${target}/build -G "Ninja" \
   -DCMAKE_INSTALL_PREFIX="/llvm/${target}/19.1.2" \
   -DCMAKE_RANLIB="/usr/bin/llvm-ranlib" \
   \
+  -DIWYU_RESOURCE_RELATIVE_TO="iwyu" \
+  \
   -DLLVM_BUILTIN_TARGETS="${target}" \
   -DLLVM_ENABLE_LTO="Thin" \
   -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" \
@@ -170,6 +172,8 @@ cmake -S /Users/Shared/llvm/llvm-project/llvm -B /Users/Shared/llvm/build -G "Ni
   -DCMAKE_INSTALL_PREFIX="${HOME}/llvm/19.1.2" \
   -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
   \
+  -DIWYU_RESOURCE_RELATIVE_TO="iwyu" \
+  \
   -DLLVM_ENABLE_LTO="Thin" \
   -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" \
   -DLLVM_ENABLE_ZSTD="OFF" \
@@ -202,6 +206,8 @@ choco install ninja
 cmake -S C:/llvm/llvm-project/llvm -B C:/llvm/build -G "Ninja" ^
   -DCMAKE_BUILD_TYPE="Release" ^
   -DCMAKE_INSTALL_PREFIX="C:/llvm/19.1.2" ^
+  ^
+  -DIWYU_RESOURCE_RELATIVE_TO="iwyu" ^
   ^
   -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" ^
   -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="C:/llvm/include-what-you-use" ^
