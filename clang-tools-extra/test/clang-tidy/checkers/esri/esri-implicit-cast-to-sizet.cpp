@@ -63,6 +63,37 @@ void warning_from_subtraction_of_int64()
   // CHECK-MESSAGES: :[[@LINE-1]]:16: warning: implicit cast to size_t may be a narrowing cast
 }
 
+/*
+// Unfortunately this case can't be detected because the template instantiation
+// uses the canonical type (aka, 'unsigned long'), so we can't distinguish
+// between foo<size_t>() from foo<uint64_t>()
+// https://stackoverflow.com/questions/79295243/matching-sugared-qualtype-of-a-template-parameter-in-a-vardecl
+template <typename T>
+void foo()
+{
+  uint64_t v{3};
+  T var = v;
+}
+
+void warning_when_sizet_is_dependent_type()
+{
+  foo<size_t>();
+}
+*/
+
+template <typename T>
+void bar()
+{
+  T v{55};
+  size_t var = v;
+  // CHECK-MESSAGES: :[[@LINE-1]]:16: warning: implicit cast to size_t may be a narrowing cast
+}
+
+void warning_when_sizet_assigned_from_dependent_type()
+{
+  bar<int64_t>();
+}
+
 // Verified cases where no warning is raised
 
 void no_warning_for_literals()
@@ -143,4 +174,16 @@ void no_warning_when_casting_literals_from_ternary_expr()
 void no_warning_when_passing_casted_argument_with_literal()
 {
   d(uint64_t{3});
+}
+
+template <typename T>
+void baz()
+{
+  T v{55};
+  size_t var = v;
+}
+
+void no_warning_when_sizet_assigned_from_smaller_dependent_type()
+{
+  baz<int32_t>();
 }

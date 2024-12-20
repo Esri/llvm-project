@@ -101,7 +101,11 @@ void ImplicitCastToSizetCheck::check(const MatchFinder::MatchResult &Result)
   const auto *SourceExpr = Result.Nodes.getNodeAs<Expr>("se");
   assert(SourceExpr && "Needs to have a source Expr");
 
-  if (Result.Context->getTypeSize(SourceExpr->getType()) <= 32)
+  const auto Type = SourceExpr->getType();
+  if (Type->isDependentType())
+    return;
+
+  if (Result.Context->getTypeSize(Type) <= 32)
     return;
 
   // See if the source expression can be constant evaluated (such as literals)
