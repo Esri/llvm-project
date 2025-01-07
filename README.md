@@ -184,7 +184,7 @@ cmake -S /Users/Shared/llvm/llvm-project/llvm -B /Users/Shared/llvm/build -G "Ni
 cmake --build /Users/Shared/llvm/build -- check-clang-tools
 
 # install
-cmake --build /Users/Shared/llvm/build -- install-clang-format-stripped install-clang-resource-headers-stripped install-clang-tidy-stripped install-cmake-exports-stripped tools/iwyu/install/strip
+cmake --build /Users/Shared/llvm/build -- install-clang-apply-replacements-stripped install-clang-format-stripped install-clang-resource-headers-stripped install-clang-tidy-stripped install-cmake-exports-stripped tools/iwyu/install/strip
 
 # zip
 cd /Users/Shared/llvm && zip -r llvm-19.1.2.zip 19.1.2
@@ -217,7 +217,7 @@ cmake -S C:/llvm/llvm-project/llvm -B C:/llvm/build -G "Ninja" ^
 cmake --build C:/llvm/build -- check-clang-tools
 
 :: install
-cmake --build C:/llvm/build -- install-clang-format-stripped install-clang-resource-headers-stripped install-clang-tidy-stripped install-cmake-exports-stripped tools/iwyu/install
+cmake --build C:/llvm/build -- install-clang-apply-replacements-stripped install-clang-format-stripped install-clang-resource-headers-stripped install-clang-tidy-stripped install-cmake-exports-stripped tools/iwyu/install
 
 :: zip
 powershell Compress-Archive C:/llvm/19.1.2 C:/llvm/llvm-19.1.2.zip
