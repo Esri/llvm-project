@@ -71,6 +71,11 @@ void ImplicitCastToSizetCheck::check(const MatchFinder::MatchResult &Result)
   if (Result.Context->getTypeSize(Type) <= 32)
     return;
 
+  // Ignore expressions whose type is the same canonical type as size_t (ie.
+  // 'unsigned long').
+  if (Type.getCanonicalType().getTypePtr() == Result.Context->getSizeType().getTypePtr())
+    return;
+
   // See if the source expression can be constant evaluated (such as literals)
   if (const auto ConstExprResult =
        SourceExpr->getIntegerConstantExpr(*Result.Context))
