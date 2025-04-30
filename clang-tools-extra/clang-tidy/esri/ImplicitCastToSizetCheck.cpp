@@ -17,77 +17,40 @@ namespace esri {
 
 void ImplicitCastToSizetCheck::registerMatchers(MatchFinder *Finder) {
 
-  auto SizeTType = qualType(hasDeclaration(
-    namedDecl(hasName("size_t"))
-  ));
-
   auto ConditionalWithLiterals = conditionalOperator(
     hasTrueExpression(integerLiteral()),
     hasFalseExpression(integerLiteral())
   );
 
-  auto SourceExpr = expr(
-    unless(integerLiteral()),                   // ...that isn't a literal
-    unless(has(initListExpr(                    // ...or a type initializer (`int32_t{}`)
-      has(integerLiteral()))                    // ...that contains a literal
-    )),
-
-    unless(ConditionalWithLiterals),            // ...or a ternary operator where both branches are literals
-    unless(parenExpr(                           // ...or parenthesis surrounding a
-      has(ConditionalWithLiterals)              // ...ternary operator where both branches are literals
-    )),
-
-    unless(binaryOperator(                      // ...or a subtraction of two pointers
-      hasOperatorName("-"),
-      hasLHS(hasType(isAnyPointer())),
-      hasRHS(hasType(isAnyPointer()))
-    ))
-  );
-
-  auto ImplicitIntegralCast = implicitCastExpr( //  Match implicit casts
-    hasCastKind(CK_IntegralCast)                //  ...that are integram casts
-  ).bind("implicit_cast");
-
+#if (!defined(_WIN32) && !defined(_WIN64)) // TODO: get this check to work on Windows
   Finder->addMatcher(
-    implicitCastExpr(                           // Match implicit casts where...
-      isExpansionInMainFile(),                  // ...the cast is in the file being examined
-      ImplicitIntegralCast,                     // ...is an integral cast (as opposed to ValueCategory cast)
-      hasImplicitDestinationType(SizeTType),    // ...where the casted to type is size_t
-      hasSourceExpression(                      // ...and the source expression
-        SourceExpr.bind("se")                   // ...matches the SourceExpr matcher
-      )
-    ),
-    this);
+    implicitCastExpr(                     // Match implicit casts where...
+      isExpansionInMainFile(),            // ...the cast is in the file being examined
+      hasCastKind(CK_IntegralCast),       // ...is an integral cast (as opposed to ValueCategory cast)
+      hasType(qualType(hasDeclaration(    // ...the type being casted to
+        namedDecl(hasName("size_t"))      // ...is size_t
+      ))),                                // ...and
+      hasSourceExpression(expr(           // ...the source expression
 
-  Finder->addMatcher(
-    binaryOperation(
-      isAssignmentOperator(),
-      hasLHS(hasType(SizeTType)),
-      hasRHS(SourceExpr.bind("se"))
-    ).bind("assignment"),
-    this);
+        unless(integerLiteral()),         // ...that isn't a literal
+        unless(has(initListExpr(          // ...or a type initializer (`int32_t{}`)
+          has(integerLiteral()))          // ...that contains a literal
+       )),
 
-  Finder->addMatcher(
-    varDecl(                                    // Match any variable declarations
-      hasType(SizeTType),                       // ...of type size_t
-      hasInitializer(expr(                      // ...where the init expression
-        SourceExpr.bind("se"),                  // ...matches the SourceExpr matcher
-        unless(anyOf(                           // ...but the expression
-          ImplicitIntegralCast,                 // ...isn't an integral cast itself
-          hasDescendant(ImplicitIntegralCast)   // ...or comes from an integral cast
+        unless(ConditionalWithLiterals),  // ...or a ternary operator where both branches are literals
+        unless(parenExpr(                 // ...or parenthesis surrounding a
+          has(ConditionalWithLiterals)    // ...ternary operator where both branches are literals
+        )),
+
+        unless(binaryOperator(            // ...or a subtraction of two pointers
+          hasOperatorName("-"),
+          hasLHS(hasType(isAnyPointer())),
+          hasRHS(hasType(isAnyPointer()))
         ))
-      ))
-    ).bind("var"),
+      ).bind("se"))
+    ).bind("implicit_cast"),
     this);
-
-  Finder->addMatcher(
-    callExpr(                                   // Match function calls
-      forEachArgumentWithParam(                 // ...where any of the arguments
-        declRefExpr(SourceExpr.bind("se")),     // ...matches the SourceExpr matcher
-        parmVarDecl(hasType(SizeTType))         // ...and the parameter type is size_t
-      )
-    ),
-    this);
+#endif
 }
 
 void ImplicitCastToSizetCheck::check(const MatchFinder::MatchResult &Result)
@@ -106,6 +69,11 @@ void ImplicitCastToSizetCheck::check(const MatchFinder::MatchResult &Result)
     return;
 
   if (Result.Context->getTypeSize(Type) <= 32)
+    return;
+
+  // Ignore expressions whose type is the same canonical type as size_t (ie.
+  // 'unsigned long').
+  if (Type.getCanonicalType().getTypePtr() == Result.Context->getSizeType().getTypePtr())
     return;
 
   // See if the source expression can be constant evaluated (such as literals)

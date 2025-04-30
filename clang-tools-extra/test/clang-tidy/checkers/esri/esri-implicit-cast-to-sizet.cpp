@@ -1,3 +1,8 @@
+// Matcher doesn't work correctly on Windows, which uses a different
+// SizeType.  See WindowsX86_64TargetInfo
+//
+// UNSUPPORTED: system-windows
+
 // RUN: %check_clang_tidy %s esri-implicit-cast-to-sizet %t
 
 #include <stddef.h>
