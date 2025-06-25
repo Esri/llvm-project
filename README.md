@@ -147,8 +147,8 @@ Now that both folders have the missing bits for both, zip them up using the arch
 can have the native binaries.
 
 ```bash
-cd ${HOME}/llvm/x86_64-unknown-linux-gnu && zip -r llvm-19.1.2-x86_64.zip 19.1.2
-cd ${HOME}/llvm/aarch64-unknown-linux-gnu && zip -r llvm-19.1.2-aarch64.zip 19.1.2
+cd ${HOME}/llvm/x86_64-unknown-linux-gnu && rm -f llvm-19.1.2-x86_64.zip && zip -r llvm-19.1.2-x86_64.zip 19.1.2
+cd ${HOME}/llvm/aarch64-unknown-linux-gnu && rm -f llvm-19.1.2-aarch64.zip && zip -r llvm-19.1.2-aarch64.zip 19.1.2
 ```
 
 ## macOS
@@ -194,7 +194,7 @@ cmake --build /Users/Shared/llvm/build -- \
   tools/iwyu/install/strip
 
 # zip
-cd /Users/Shared/llvm && zip -r llvm-19.1.2.zip 19.1.2
+cd /Users/Shared/llvm && rm -f llvm-19.1.2.zip && zip -r llvm-19.1.2.zip 19.1.2
 ```
 
 ## Windows
@@ -234,7 +234,7 @@ cmake --build C:/llvm/build -- ^
   tools/iwyu/install
 
 :: zip
-powershell Compress-Archive C:/llvm/19.1.2 C:/llvm/llvm-19.1.2.zip
+powershell Compress-Archive -Force C:/llvm/19.1.2 C:/llvm/llvm-19.1.2.zip
 ```
 
 ## Cleanup
