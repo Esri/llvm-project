@@ -147,8 +147,8 @@ Now that both folders have the missing bits for both, zip them up using the arch
 can have the native binaries.
 
 ```bash
-cd ${HOME}/llvm/x86_64-unknown-linux-gnu && zip -r llvm-19.1.2-x86_64.zip 19.1.2
-cd ${HOME}/llvm/aarch64-unknown-linux-gnu && zip -r llvm-19.1.2-aarch64.zip 19.1.2
+cd ${HOME}/llvm/x86_64-unknown-linux-gnu && rm -f llvm-19.1.2-x86_64.zip && zip -r llvm-19.1.2-x86_64.zip 19.1.2
+cd ${HOME}/llvm/aarch64-unknown-linux-gnu && rm -f llvm-19.1.2-aarch64.zip && zip -r llvm-19.1.2-aarch64.zip 19.1.2
 ```
 
 ## macOS
@@ -184,10 +184,17 @@ cmake -S /Users/Shared/llvm/llvm-project/llvm -B /Users/Shared/llvm/build -G "Ni
 cmake --build /Users/Shared/llvm/build -- check-clang-tools
 
 # install
-cmake --build /Users/Shared/llvm/build -- install-clang-apply-replacements-stripped install-clang-format-stripped install-clang-resource-headers-stripped install-clang-tidy-stripped install-cmake-exports-stripped tools/iwyu/install/strip
+cmake --build /Users/Shared/llvm/build -- \
+  install-clang-apply-replacements-stripped \
+  install-clang-format-stripped \
+  install-clang-resource-headers-stripped \
+  install-clang-tidy-stripped \
+  install-clangd-stripped \
+  install-cmake-exports-stripped \
+  tools/iwyu/install/strip
 
 # zip
-cd /Users/Shared/llvm && zip -r llvm-19.1.2.zip 19.1.2
+cd /Users/Shared/llvm && rm -f llvm-19.1.2.zip && zip -r llvm-19.1.2.zip 19.1.2
 ```
 
 ## Windows
@@ -217,10 +224,17 @@ cmake -S C:/llvm/llvm-project/llvm -B C:/llvm/build -G "Ninja" ^
 cmake --build C:/llvm/build -- check-clang-tools
 
 :: install
-cmake --build C:/llvm/build -- install-clang-apply-replacements-stripped install-clang-format-stripped install-clang-resource-headers-stripped install-clang-tidy-stripped install-cmake-exports-stripped tools/iwyu/install
+cmake --build C:/llvm/build -- ^
+  install-clang-apply-replacements-stripped ^
+  install-clang-format-stripped ^
+  install-clang-resource-headers-stripped ^
+  install-clang-tidy-stripped ^
+  install-clangd-stripped ^
+  install-cmake-exports-stripped ^
+  tools/iwyu/install
 
 :: zip
-powershell Compress-Archive C:/llvm/19.1.2 C:/llvm/llvm-19.1.2.zip
+powershell Compress-Archive -Force C:/llvm/19.1.2 C:/llvm/llvm-19.1.2.zip
 ```
 
 ## Cleanup
