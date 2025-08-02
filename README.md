@@ -162,7 +162,7 @@ support as it isn't needed and doesn't work with universal builds.
 brew install cmake ccache ninja
 
 # Set the Xcode version to RTC's version
-sudo xcode-select --switch /Applications/Xcode_15.2.0.app/Contents/Developer
+sudo xcode-select --switch /Applications/Xcode_16.2.0.app/Contents/Developer
 
 # Configure the release build (Use Debug instead of Release in CMAKE_BUILD_TYPE to debug tools)
 cmake -S /Users/Shared/llvm/llvm-project/llvm -B /Users/Shared/llvm/build -G "Ninja" \
