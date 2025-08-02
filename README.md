@@ -176,6 +176,7 @@ cmake -S /Users/Shared/llvm/llvm-project/llvm -B /Users/Shared/llvm/build -G "Ni
   \
   -DLLVM_ENABLE_LTO="Thin" \
   -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra" \
+  -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
   -DLLVM_ENABLE_ZSTD="OFF" \
   -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="/Users/Shared/llvm/include-what-you-use" \
   -DLLVM_EXTERNAL_PROJECTS="iwyu"
@@ -184,14 +185,7 @@ cmake -S /Users/Shared/llvm/llvm-project/llvm -B /Users/Shared/llvm/build -G "Ni
 cmake --build /Users/Shared/llvm/build -- check-clang-tools
 
 # install
-cmake --build /Users/Shared/llvm/build -- \
-  install-clang-apply-replacements-stripped \
-  install-clang-format-stripped \
-  install-clang-resource-headers-stripped \
-  install-clang-tidy-stripped \
-  install-clangd-stripped \
-  install-cmake-exports-stripped \
-  tools/iwyu/install/strip
+cmake --build /Users/Shared/llvm/build -- install/strip
 
 # zip
 cd /Users/Shared/llvm && rm -f llvm-19.1.2.zip && zip -r llvm-19.1.2.zip 19.1.2
