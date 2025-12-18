@@ -30,6 +30,7 @@ fi
 mkdir -p ${LLVM_HOME} && cd ${LLVM_HOME}
 git clone --branch runtimecore_19.1.2 git@github.com:Esri/include-what-you-use.git
 git clone --branch runtimecore_19.1.2 git@github.com:Esri/llvm-project.git
+git clone --branch runtimecore_19.1.2 git@github.com:Esri/xunused.git
 ```
 
 ## Linux
@@ -76,7 +77,8 @@ cmake -S llvm-project/llvm -B /llvm/${target}/build -G "Ninja" \
   -DLLVM_ENABLE_PROJECTS="clang;clang-tools-extra;lld" \
   -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind" \
   -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="/llvm/include-what-you-use" \
-  -DLLVM_EXTERNAL_PROJECTS="iwyu" \
+  -DLLVM_EXTERNAL_PROJECTS="iwyu;xunused" \
+  -DLLVM_EXTERNAL_XUNUSED_SOURCE_DIR="/llvm/xunused" \
   -DLLVM_RUNTIME_TARGETS="${target}" \
   -DLLVM_USE_LINKER="lld" \
   \
@@ -179,7 +181,8 @@ cmake -S /Users/Shared/llvm/llvm-project/llvm -B /Users/Shared/llvm/build -G "Ni
   -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
   -DLLVM_ENABLE_ZSTD="OFF" \
   -DLLVM_EXTERNAL_IWYU_SOURCE_DIR="/Users/Shared/llvm/include-what-you-use" \
-  -DLLVM_EXTERNAL_PROJECTS="iwyu"
+  -DLLVM_EXTERNAL_PROJECTS="iwyu;xunused" \
+  -DLLVM_EXTERNAL_XUNUSED_SOURCE_DIR="/Users/Shared/llvm/xunused"
 
 # run the clang tools tests to make sure the Esri specific tests pass
 cmake --build /Users/Shared/llvm/build -- check-clang-tools
